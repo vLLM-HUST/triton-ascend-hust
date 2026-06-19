@@ -96,6 +96,10 @@ kernel_meta/
 /triton/
 build/
 
+# Build artifacts
+DartConfiguration.tcl
+tablegen_compile_commands.yml
+
 # artifact
 dist/
 *.egg-info/
