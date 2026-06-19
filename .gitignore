@@ -12,12 +12,7 @@ python/dist/
 python/triton*.egg-info/
 python/triton_kernels/triton*.egg-info/
 
-python/triton/_C/*.pyd
-python/triton/_C/*.so
-python/triton/_C/*.dylib
-python/triton/_C/*.pdb
-python/triton/_C/*.exe
-python/triton/_C/*.ilk
+python/triton/_C/
 python/triton/FileCheck
 
 # Backends copied from submodules
@@ -100,6 +95,10 @@ kernel_meta/
 # compilation
 /triton/
 build/
+
+# Build artifacts
+DartConfiguration.tcl
+tablegen_compile_commands.yml
 
 # artifact
 dist/
