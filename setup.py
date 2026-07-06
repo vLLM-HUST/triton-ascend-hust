@@ -671,6 +671,9 @@ class CMakeBuild(build_ext):
 
 
 def download_and_copy_dependencies():
+    if not any(backend.name == "nvidia" for backend in backends):
+        return
+
     nvidia_version_path = os.path.join(get_base_dir(), "cmake", "nvidia-toolchain-version.json")
     with open(nvidia_version_path, "r") as nvidia_version_file:
         # parse this json file to get the version of the nvidia toolchain
@@ -743,8 +746,17 @@ def download_and_copy_dependencies():
         f"https://developer.download.nvidia.com/compute/cuda/redist/cuda_cupti/{system}-{arch}/cuda_cupti-{system}-{arch}-{version}-archive.tar.xz",
     )
 
+def get_enabled_in_tree_backends():
+    backend_names = os.getenv("TRITON_BUILD_BACKENDS", "ascend,nvidia,amd")
+    backends = [name.strip() for name in backend_names.split(",") if name.strip()]
+    valid_backends = {"ascend", "nvidia", "amd"}
+    invalid_backends = sorted(set(backends) - valid_backends)
+    if invalid_backends:
+        raise ValueError(f"Unsupported TRITON_BUILD_BACKENDS entries: {', '.join(invalid_backends)}")
+    return backends
 
-backends = [*BackendInstaller.copy(["ascend", "nvidia", "amd"]), *BackendInstaller.copy_externals()]
+
+backends = [*BackendInstaller.copy(get_enabled_in_tree_backends()), *BackendInstaller.copy_externals()]
 
 
 def get_package_dirs():
