@@ -35,7 +35,9 @@
 #include "triton/Dialect/Triton/IR/Utility.h"
 #include "triton/Dialect/TritonGPU/IR/Dialect.h"
 #include "triton/Dialect/TritonInstrument/IR/Dialect.h"
+#ifdef TRITON_ENABLE_NVIDIA_BINDINGS
 #include "triton/Dialect/TritonNvidiaGPU/Transforms/TMAUtilities.h"
+#endif
 #include "triton/Tools/Sys/GetEnv.hpp"
 #include "llvm/Support/FileSystem.h"
 #include "llvm/Support/SourceMgr.h"
@@ -48,7 +50,9 @@ using namespace mlir;
 using namespace triton;
 namespace tt = triton;
 namespace ttg = triton::gpu;
+#ifdef TRITON_ENABLE_NVIDIA_BINDINGS
 namespace ttng = triton::nvidia_gpu;
+#endif
 
 llvm::raw_fd_ostream &mlir_dumps() {
   std::error_code EC;
@@ -211,6 +215,7 @@ py::list getTensorDescMetadata(ModuleOp &mod) {
     if (!descTy)
       continue;
 
+#ifdef TRITON_ENABLE_NVIDIA_BINDINGS
     auto blockType = descTy.getBlockType();
     auto encoding = blockType.getEncoding();
     auto mmaEncoding = dyn_cast<ttg::NVMMASharedEncodingAttr>(encoding);
@@ -227,6 +232,7 @@ py::list getTensorDescMetadata(ModuleOp &mod) {
         std::vector<int>(blockSize.begin(), blockSize.end());
     metadata["fp4_padded"] = mmaEncoding && mmaEncoding.getFp4Padded();
     result.append(std::move(metadata));
+#endif
   }
   return result;
 }

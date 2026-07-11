@@ -3,14 +3,18 @@
 #include "mlir/Pass/Pass.h"
 #include "mlir/Pass/PassManager.h"
 #include "passes.h"
+#ifdef TRITON_ENABLE_NVIDIA_BINDINGS
 #include "triton/Analysis/Allocation.h"
 #include "triton/Analysis/Membar.h"
 #include "triton/Conversion/TritonGPUToLLVM/Passes.h"
+#endif
 #include "triton/Conversion/TritonToTritonGPU/Passes.h"
 #include "triton/Dialect/Gluon/Transforms/Passes.h"
 #include "triton/Dialect/Triton/Transforms/Passes.h"
+#ifdef TRITON_ENABLE_NVIDIA_BINDINGS
 #include "triton/Dialect/TritonGPU/Transforms/Passes.h"
 #include "triton/Dialect/TritonInstrument/Transforms/Passes.h"
+#endif
 #include "triton/Target/LLVMIR/Passes.h"
 #include <pybind11/pybind11.h>
 #include <pybind11/stl.h>
@@ -18,11 +22,13 @@
 namespace py = pybind11;
 
 void init_triton_analysis(py::module &&m) {
+#ifdef TRITON_ENABLE_NVIDIA_BINDINGS
   py::class_<mlir::ModuleAllocation>(m, "allocation", py::module_local())
       .def(py::init<mlir::ModuleOp>());
   py::class_<mlir::ModuleMembarAnalysis>(m, "membar", py::module_local())
       .def(py::init<mlir::ModuleAllocation *>())
       .def("run", &mlir::ModuleMembarAnalysis::run);
+#endif
 }
 
 void init_triton_passes_common(py::module &&m) {
@@ -53,6 +59,7 @@ void init_triton_passes_ttir(py::module &&m) {
 }
 
 void init_triton_passes_ttgpuir(py::module &&m) {
+#ifdef TRITON_ENABLE_NVIDIA_BINDINGS
   using namespace mlir;
   using namespace mlir::triton::gpu;
   using namespace mlir::triton::instrument;
@@ -92,6 +99,7 @@ void init_triton_passes_ttgpuir(py::module &&m) {
                      createTritonGPUCoalesceAsyncCopy);
   ADD_PASS_WRAPPER_0("add_concurrency_sanitizer",
                      createTritonInstrumentConcurrencySanitizer);
+#endif
 }
 
 void init_triton_passes_convert(py::module &&m) {
@@ -100,7 +108,9 @@ void init_triton_passes_convert(py::module &&m) {
   ADD_PASS_WRAPPER_0("add_cf_to_llvmir", createConvertControlFlowToLLVMPass);
   ADD_PASS_WRAPPER_0("add_index_to_llvmir", createConvertIndexToLLVMPass);
   ADD_PASS_WRAPPER_0("add_arith_to_llvmir", createArithToLLVMConversionPass);
+#ifdef TRITON_ENABLE_NVIDIA_BINDINGS
   ADD_PASS_WRAPPER_0("add_nvvm_to_llvm", createConvertNVVMToLLVMPass);
+#endif
 }
 
 void init_triton_passes_llvmir(py::module &&m) {

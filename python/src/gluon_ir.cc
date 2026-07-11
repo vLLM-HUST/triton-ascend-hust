@@ -12,7 +12,9 @@
 #include "triton/Dialect/TritonGPU/IR/Attributes.h"
 #include "triton/Dialect/TritonGPU/IR/Dialect.h"
 #include "triton/Dialect/TritonGPU/IR/Types.h"
+#ifdef TRITON_ENABLE_NVIDIA_BINDINGS
 #include "triton/Dialect/TritonNvidiaGPU/IR/Dialect.h"
+#endif
 #include "triton/Tools/LayoutUtils.h"
 #include "triton/Tools/LinearLayout.h"
 
@@ -20,7 +22,9 @@ using namespace mlir;
 namespace py = pybind11;
 namespace tt = triton;
 namespace ttg = triton::gpu;
+#ifdef TRITON_ENABLE_NVIDIA_BINDINGS
 namespace ttng = triton::nvidia_gpu;
+#endif
 namespace gluon = mlir::triton::gluon;
 #ifdef TRITON_ENABLE_AMD_GLUON
 namespace ttag = mlir::triton::amdgpu;
@@ -97,8 +101,10 @@ struct GluonLayouts {
   py::handle SliceLayout;
   py::handle DistributedLinearLayout;
   py::handle DotOperandLayout;
+#ifdef TRITON_ENABLE_NVIDIA_BINDINGS
   py::handle NVMMADistributedLayout;
   py::handle NVMMASharedLayout;
+#endif
   py::handle SwizzledSharedLayout;
 #ifdef TRITON_ENABLE_AMD_GLUON
   py::handle AMDMFMALayout;
@@ -119,9 +125,11 @@ struct GluonLayouts {
     DistributedLinearLayout =
         py::object(layouts.attr("DistributedLinearLayout")).release();
     DotOperandLayout = py::object(layouts.attr("DotOperandLayout")).release();
+#ifdef TRITON_ENABLE_NVIDIA_BINDINGS
     NVMMADistributedLayout =
         py::object(layouts.attr("NVMMADistributedLayout")).release();
     NVMMASharedLayout = py::object(layouts.attr("NVMMASharedLayout")).release();
+#endif
     SwizzledSharedLayout =
         py::object(layouts.attr("SwizzledSharedLayout")).release();
 #ifdef TRITON_ENABLE_AMD_GLUON
@@ -183,7 +191,9 @@ py::object layoutToGluon(Attribute layout) {
   } else if (auto dotOp = dyn_cast<ttg::DotOperandEncodingAttr>(layout)) {
     return layouts.DotOperandLayout(
         dotOp.getOpIdx(), layoutToGluon(dotOp.getParent()), dotOp.getKWidth());
-  } else if (auto mma = dyn_cast<ttg::NvidiaMmaEncodingAttr>(layout)) {
+  }
+#ifdef TRITON_ENABLE_NVIDIA_BINDINGS
+  else if (auto mma = dyn_cast<ttg::NvidiaMmaEncodingAttr>(layout)) {
     auto ctaLayout = mma.getCTALayout();
     return layouts.NVMMADistributedLayout(
         std::vector<unsigned>{mma.getVersionMajor(), mma.getVersionMinor()},
@@ -199,9 +209,11 @@ py::object layoutToGluon(Attribute layout) {
         toStdVector(ctaLayout.getCTAsPerCGA()),
         toStdVector(ctaLayout.getCTASplitNum()),
         toStdVector(ctaLayout.getCTAOrder()));
-  } else if (auto swizzled =
+  }
+#endif
+  else if (auto swizzled =
                  dyn_cast<ttg::SwizzledSharedEncodingAttr>(layout)) {
-    auto ctaLayout = nvmma.getCTALayout();
+    auto ctaLayout = swizzled.getCTALayout();
     return layouts.SwizzledSharedLayout(
         swizzled.getVec(), swizzled.getPerPhase(), swizzled.getMaxPhase(),
         swizzled.getOrder(), toStdVector(ctaLayout.getCTAsPerCGA()),
@@ -280,6 +292,7 @@ void init_gluon_ir(py::module &&m) {
                  /*mutableMemory=*/true,
                  /*allocShape=*/allocShape);
            })
+#ifdef TRITON_ENABLE_NVIDIA_BINDINGS
       .def("get_tensor_mem_desc_ty",
            [](GluonOpBuilder &self, Type &elementType,
               std::vector<int64_t> &shape, Attribute layout,
@@ -291,6 +304,7 @@ void init_gluon_ir(py::module &&m) {
                  /*mutableMemory=*/true,
                  /*allocShape=*/allocShape);
            })
+#endif
       .def("get_blocked_layout",
            [](GluonOpBuilder &self, std::vector<unsigned> &sizePerThread,
               std::vector<unsigned> &threadsPerWarp,
@@ -409,6 +423,7 @@ void init_gluon_ir(py::module &&m) {
              return self.getChecked<ttg::SwizzledSharedEncodingAttr>(
                  ctx, vec, perPhase, maxPhase, order, ctaLayout);
            })
+#ifdef TRITON_ENABLE_NVIDIA_BINDINGS
       .def("get_tensor_memory_layout",
            [](GluonOpBuilder &self, std::vector<unsigned> &block, bool unpacked,
               std::vector<unsigned> &ctaSplitNum) -> Attribute {
@@ -427,6 +442,7 @@ void init_gluon_ir(py::module &&m) {
              return self.getChecked<ttng::TensorMemoryScalesEncodingAttr>(
                  ctx, ctaSplitNum[0], ctaSplitNum[1]);
            })
+#endif
       .def("get_gluon_layout_from_tensor",
            [](GluonOpBuilder &self, Value tensor) -> py::object {
              auto ty = dyn_cast<RankedTensorType>(tensor.getType());
@@ -474,11 +490,13 @@ void init_gluon_ir(py::module &&m) {
                  pointer, smem, mask, other, cacheModifier, evictionPolicy,
                  isVolatile);
            })
+#ifdef TRITON_ENABLE_NVIDIA_BINDINGS
       .def("create_async_copy_mbarrier_arrive",
            [](GluonOpBuilder &self, Value mbarrier, bool incrementCount) {
              self.create<ttng::AsyncCopyMbarrierArriveOp>(mbarrier,
                                                           !incrementCount);
            })
+#endif
       .def("create_async_commit_group",
            [](GluonOpBuilder &self) {
              ValueRange tokens;
@@ -556,6 +574,7 @@ void init_gluon_ir(py::module &&m) {
              auto op = self.create<triton::SplitOp>(TypeRange{resTy, resTy}, a);
              return py::make_tuple(op->getResult(0), op->getResult(1));
            })
+#ifdef TRITON_ENABLE_NVIDIA_BINDINGS
       .def("create_warpgroup_mma",
            [](GluonOpBuilder &self, Value a, Value b, Value acc, Value useAcc,
               triton::InputPrecision precision = triton::InputPrecision::IEEE,
@@ -669,6 +688,7 @@ void init_gluon_ir(py::module &&m) {
            [](GluonOpBuilder &self, bool bCluster) -> OpState {
              return self.create<ttng::FenceAsyncSharedOp>(bCluster);
            })
+#endif
 
       .def("create_broadcast",
            [](TritonOpBuilder &self, Value &arg, Type retTy) -> Value {
