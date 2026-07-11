@@ -1,5 +1,6 @@
 import importlib
 import inspect
+import os
 import sys
 from dataclasses import dataclass
 from typing import Type, TypeVar, Union
@@ -36,7 +37,13 @@ class Backend:
 
 def _discover_backends() -> dict[str, Backend]:
     backends = dict()
+    requested = os.getenv("TRITON_CODEGEN_BACKENDS")
+    requested_names = None
+    if requested:
+        requested_names = {name.strip() for name in requested.replace(",", ";").split(";") if name.strip()}
     for ep in entry_points().select(group="triton.backends"):
+        if requested_names is not None and ep.name not in requested_names:
+            continue
         compiler = importlib.import_module(f"{ep.value}.compiler")
         driver = importlib.import_module(f"{ep.value}.driver")
         backends[ep.name] = Backend(_find_concrete_subclasses(compiler, BaseBackend),  # type: ignore
