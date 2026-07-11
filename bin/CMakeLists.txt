@@ -5,7 +5,12 @@ include_directories(
     ${PROJECT_BINARY_DIR}/third_party/ascend/AscendNPU-IR/bishengir/include
   )
 
-add_llvm_executable(triton-opt triton-opt.cpp PARTIAL_SOURCES_INTENDED)
+set(TRITON_DEV_TOOL_EXCLUDE_FROM_ALL)
+if(TRITON_BUILD_RUNTIME_TOOLS_ONLY)
+  set(TRITON_DEV_TOOL_EXCLUDE_FROM_ALL EXCLUDE_FROM_ALL)
+endif()
+
+add_llvm_executable(triton-opt ${TRITON_DEV_TOOL_EXCLUDE_FROM_ALL} triton-opt.cpp PARTIAL_SOURCES_INTENDED)
 
 # TODO: what's this?
 llvm_update_compile_flags(triton-opt)
@@ -45,7 +50,7 @@ target_link_libraries(triton-opt PRIVATE
 
 mlir_check_all_link_libraries(triton-opt)
 
-add_llvm_executable(triton-reduce triton-reduce.cpp PARTIAL_SOURCES_INTENDED)
+add_llvm_executable(triton-reduce ${TRITON_DEV_TOOL_EXCLUDE_FROM_ALL} triton-reduce.cpp PARTIAL_SOURCES_INTENDED)
 mlir_check_all_link_libraries(triton-reduce)
 
 llvm_update_compile_flags(triton-reduce)
@@ -85,7 +90,7 @@ target_link_libraries(triton-reduce PRIVATE
 
 mlir_check_all_link_libraries(triton-reduce)
 
-add_llvm_executable(triton-lsp triton-lsp.cpp PARTIAL_SOURCES_INTENDED)
+add_llvm_executable(triton-lsp ${TRITON_DEV_TOOL_EXCLUDE_FROM_ALL} triton-lsp.cpp PARTIAL_SOURCES_INTENDED)
 
 llvm_update_compile_flags(triton-lsp)
 target_link_libraries(triton-lsp PRIVATE
@@ -126,6 +131,7 @@ mlir_check_all_link_libraries(triton-lsp)
 
 
 add_llvm_executable(triton-llvm-opt
+  ${TRITON_DEV_TOOL_EXCLUDE_FROM_ALL}
   triton-llvm-opt.cpp
 
   PARTIAL_SOURCES_INTENDED
@@ -145,7 +151,7 @@ target_link_libraries(triton-llvm-opt PRIVATE
 export_executable_symbols_for_plugins(triton-llvm-opt)
 
 
-add_llvm_executable(triton-tensor-layout triton-tensor-layout.cpp PARTIAL_SOURCES_INTENDED)
+add_llvm_executable(triton-tensor-layout ${TRITON_DEV_TOOL_EXCLUDE_FROM_ALL} triton-tensor-layout.cpp PARTIAL_SOURCES_INTENDED)
 target_link_libraries(triton-tensor-layout PRIVATE
   ${triton_libs}
   # Ascend backend libraries

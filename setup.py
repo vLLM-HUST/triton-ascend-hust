@@ -53,6 +53,7 @@ os.environ.setdefault("TRITON_BUILD_WITH_CCACHE", "true")
 os.environ.setdefault("TRITON_BUILD_WITH_CLANG_LLD", "true")
 os.environ.setdefault("TRITON_BUILD_PROTON", "OFF")
 os.environ.setdefault("TRITON_BUILD_TOOLS", "ON")
+os.environ.setdefault("TRITON_BUILD_RUNTIME_TOOLS_ONLY", "ON")
 os.environ.setdefault("TRITON_WHEEL_NAME", "triton-ascend")
 os.environ.setdefault("TRITON_APPEND_CMAKE_ARGS", "-DTRITON_BUILD_UT=OFF")
 
@@ -644,6 +645,7 @@ class CMakeBuild(build_ext):
         passthrough_args = [
             "TRITON_BUILD_PROTON",
             "TRITON_BUILD_TOOLS",
+            "TRITON_BUILD_RUNTIME_TOOLS_ONLY",
             "TRITON_BUILD_WITH_CCACHE",
             "TRITON_PARALLEL_LINK_JOBS",
         ]
