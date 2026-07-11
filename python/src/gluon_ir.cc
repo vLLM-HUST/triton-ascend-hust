@@ -4,7 +4,9 @@
 
 #include "mlir/IR/BuiltinTypes.h"
 #include "mlir/IR/Types.h"
+#ifdef TRITON_ENABLE_AMD_GLUON
 #include "third_party/amd/include/Dialect/TritonAMDGPU/IR/Dialect.h"
+#endif
 #include "triton/Analysis/Utility.h"
 #include "triton/Dialect/Gluon/IR/Dialect.h"
 #include "triton/Dialect/TritonGPU/IR/Attributes.h"
@@ -20,7 +22,9 @@ namespace tt = triton;
 namespace ttg = triton::gpu;
 namespace ttng = triton::nvidia_gpu;
 namespace gluon = mlir::triton::gluon;
+#ifdef TRITON_ENABLE_AMD_GLUON
 namespace ttag = mlir::triton::amdgpu;
+#endif
 
 // Helper to check if an MLIR type or attribute has a verifier method.
 template <typename AttrOrType>
@@ -96,15 +100,19 @@ struct GluonLayouts {
   py::handle NVMMADistributedLayout;
   py::handle NVMMASharedLayout;
   py::handle SwizzledSharedLayout;
+#ifdef TRITON_ENABLE_AMD_GLUON
   py::handle AMDMFMALayout;
+#endif
   py::handle PaddedSharedLayout;
   py::handle GluonDType;
 
   GluonLayouts() {
     auto layouts =
         py::module::import("triton.experimental.gluon.language._layouts");
+#ifdef TRITON_ENABLE_AMD_GLUON
     auto amdLayouts =
         py::module::import("triton.experimental.gluon.language.amd._layouts");
+#endif
     AutoLayout = py::object(layouts.attr("AutoLayout")).release();
     BlockedLayout = py::object(layouts.attr("BlockedLayout")).release();
     SliceLayout = py::object(layouts.attr("SliceLayout")).release();
@@ -116,7 +124,9 @@ struct GluonLayouts {
     NVMMASharedLayout = py::object(layouts.attr("NVMMASharedLayout")).release();
     SwizzledSharedLayout =
         py::object(layouts.attr("SwizzledSharedLayout")).release();
+#ifdef TRITON_ENABLE_AMD_GLUON
     AMDMFMALayout = py::object(amdLayouts.attr("AMDMFMALayout")).release();
+#endif
     PaddedSharedLayout =
         py::object(layouts.attr("PaddedSharedLayout")).release();
 
@@ -199,7 +209,9 @@ py::object layoutToGluon(Attribute layout) {
         toStdVector(ctaLayout.getCTAOrder()));
   } else if (auto autoEnc = dyn_cast<gluon::AutoEncodingAttr>(layout)) {
     return layouts.AutoLayout();
-  } else if (auto amdMfma = dyn_cast<ttg::AMDMfmaEncodingAttr>(layout)) {
+  }
+#ifdef TRITON_ENABLE_AMD_GLUON
+  else if (auto amdMfma = dyn_cast<ttg::AMDMfmaEncodingAttr>(layout)) {
     auto ctaLayout = amdMfma.getCTALayout();
     std::vector<unsigned> instrShape{amdMfma.getMDim(), amdMfma.getNDim()};
     auto elemTypeOpt = amdMfma.getElementType();
@@ -224,7 +236,9 @@ py::object layoutToGluon(Attribute layout) {
         toStdVector(ctaLayout.getCTAsPerCGA()),
         toStdVector(ctaLayout.getCTASplitNum()),
         toStdVector(ctaLayout.getCTAOrder()));
-  } else if (auto paddedShared =
+  }
+#endif
+  else if (auto paddedShared =
                  dyn_cast<ttg::PaddedSharedEncodingAttr>(layout)) {
     auto ctaLayout = paddedShared.getCTALayout();
     std::vector<std::pair<unsigned, unsigned>> intervalPaddingPairs;
@@ -338,6 +352,7 @@ void init_gluon_ir(py::module &&m) {
                  ctx, version[0], version[1], warpsPerCta, ctaLayout,
                  instrShape);
            })
+#ifdef TRITON_ENABLE_AMD_GLUON
       .def("get_amd_mfma_layout",
            [](GluonOpBuilder &self, unsigned version,
               std::vector<unsigned> &instrShape, bool transposed,
@@ -353,6 +368,7 @@ void init_gluon_ir(py::module &&m) {
                  ctx, version, warpsPerCta, tilesPerWarp, instrShape[0],
                  instrShape[1], transposed, ctaLayout, elemType);
            })
+#endif
       .def("get_padded_shared_layout",
            [](GluonOpBuilder &self, std::vector<unsigned> &intervals,
               std::vector<unsigned> &paddings, std::vector<unsigned> &order,
@@ -677,6 +693,7 @@ void init_gluon_ir(py::module &&m) {
              return self.create<ttg::WarpSpecializeOp>(
                  resultTypes, explicitCaptures, partitionNumWarps);
            })
+#ifdef TRITON_ENABLE_AMD_GLUON
       .def("create_buffer_load",
            [](GluonOpBuilder &self, Type resultType, Value ptr, Value offsets,
               Value mask, Value other, tt::CacheModifier cache) -> Value {
@@ -693,10 +710,12 @@ void init_gluon_ir(py::module &&m) {
       .def("create_buffer_load_to_local",
            [](GluonOpBuilder &self, Value dest, Value ptr, Value offsets,
               Value mask, Value other, Value stride,
-              tt::CacheModifier cacheModifier) {
+             tt::CacheModifier cacheModifier) {
              self.create<ttag::BufferLoadToLocalOp>(
                  dest, ptr, offsets, mask, other, stride, cacheModifier);
-           });
+           })
+#endif
+      ;
 
   py::class_<ttg::WarpSpecializeOp, OpState>(m, "WarpSpecializeOp",
                                              py::module_local())

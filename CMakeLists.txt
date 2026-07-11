@@ -381,6 +381,10 @@ if(TRITON_BUILD_PYTHON_MODULE)
                   ${PYTHON_SRC_PATH}/interpreter.cc
                   ${PYTHON_SRC_PATH}/llvm.cc)
 
+  if(NOT TRITON_HAS_AMD_BACKEND EQUAL -1)
+    target_compile_definitions(triton PRIVATE TRITON_ENABLE_AMD_GLUON)
+  endif()
+
   if(NOT TRITON_HAS_AMD_BACKEND EQUAL -1 AND TARGET TritonAMDGPUIR)
     target_link_libraries(triton PRIVATE TritonAMDGPUIR)
   endif()
