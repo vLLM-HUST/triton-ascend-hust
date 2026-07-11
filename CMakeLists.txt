@@ -358,6 +358,10 @@ if(TRITON_BUILD_PYTHON_MODULE)
                   ${PYTHON_SRC_PATH}/interpreter.cc
                   ${PYTHON_SRC_PATH}/llvm.cc)
 
+  if(TARGET TritonAMDGPUIR)
+    target_link_libraries(triton PRIVATE TritonAMDGPUIR)
+  endif()
+
   # Link triton with its dependencies
   target_link_libraries(triton PRIVATE ${TRITON_LIBRARIES})
   if(WIN32)
