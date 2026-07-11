@@ -52,7 +52,7 @@ triton_dir = os.path.dirname(os.path.abspath(__file__))
 os.environ.setdefault("TRITON_BUILD_WITH_CCACHE", "true")
 os.environ.setdefault("TRITON_BUILD_WITH_CLANG_LLD", "true")
 os.environ.setdefault("TRITON_BUILD_PROTON", "OFF")
-os.environ.setdefault("TRITON_BUILD_TOOLS", "OFF")
+os.environ.setdefault("TRITON_BUILD_TOOLS", "ON")
 os.environ.setdefault("TRITON_WHEEL_NAME", "triton-ascend")
 os.environ.setdefault("TRITON_APPEND_CMAKE_ARGS", "-DTRITON_BUILD_UT=OFF")
 
