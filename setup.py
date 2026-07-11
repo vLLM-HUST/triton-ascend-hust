@@ -134,9 +134,27 @@ class BackendInstaller:
         ]
 
 
+def get_cmake_define_from_append_args(name: str) -> Optional[str]:
+    append_args = os.getenv("TRITON_APPEND_CMAKE_ARGS")
+    if append_args is None:
+        return None
+
+    prefix = f"-D{name}"
+    value = None
+    for arg in shlex.split(append_args):
+        if not arg.startswith(prefix):
+            continue
+        key, sep, raw_value = arg[2:].partition("=")
+        if sep and key.split(":", 1)[0] == name:
+            value = raw_value
+    return value
+
+
 def get_in_tree_backend_names():
     default_backends = ["ascend", "nvidia", "amd"]
     requested = os.getenv("TRITON_CODEGEN_BACKENDS")
+    if requested is None:
+        requested = get_cmake_define_from_append_args("TRITON_CODEGEN_BACKENDS")
     if requested is None:
         return default_backends
 
