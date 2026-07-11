@@ -187,8 +187,12 @@ target_link_libraries(triton-tensor-layout PRIVATE
 add_llvm_executable(triton-mlir-opt triton-mlir-opt.cpp PARTIAL_SOURCES_INTENDED)
 llvm_update_compile_flags(triton-mlir-opt)
 
-target_link_libraries(triton-mlir-opt PRIVATE
-  ${triton_libs}
+set(TRITON_MLIR_OPT_LIBS)
+if(NOT TRITON_BUILD_RUNTIME_TOOLS_ONLY)
+  list(APPEND TRITON_MLIR_OPT_LIBS ${triton_libs})
+endif()
+
+list(APPEND TRITON_MLIR_OPT_LIBS
   # MLIR core
   MLIROptLib
   MLIRPass
@@ -206,5 +210,7 @@ target_link_libraries(triton-mlir-opt PRIVATE
   BiShengIRSymbolDialect
   BiShengIRTensorDialect
 )
+
+target_link_libraries(triton-mlir-opt PRIVATE ${TRITON_MLIR_OPT_LIBS})
 
 mlir_check_all_link_libraries(triton-mlir-opt)
