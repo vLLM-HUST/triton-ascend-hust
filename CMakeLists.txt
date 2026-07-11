@@ -361,6 +361,9 @@ if(TRITON_BUILD_PYTHON_MODULE)
   if(TARGET TritonAMDGPUIR)
     target_link_libraries(triton PRIVATE TritonAMDGPUIR)
   endif()
+  if(TARGET TritonAMDUtils)
+    target_link_libraries(triton PRIVATE TritonAMDUtils)
+  endif()
 
   # Link triton with its dependencies
   target_link_libraries(triton PRIVATE ${TRITON_LIBRARIES})
