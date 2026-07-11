@@ -357,6 +357,74 @@ def prove_segment_reuse_terminal_replay_output_semantics(
         }
 
 
+def materialize_segment_reuse_terminal_replay_tensors(
+    query: torch.Tensor,
+    key: torch.Tensor,
+    value: torch.Tensor,
+    *,
+    block_table: torch.Tensor | None,
+    req_idx: int,
+    context_tokens: int,
+    block_size: int,
+    terminal_query_tokens: int,
+    num_query_heads: int,
+    num_kv_heads: int,
+    head_size: int,
+) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor, dict[str, object]]:
+    """Materialize the logical terminal-replay proof tensors from paged KV.
+
+    The caller supplies raw runtime tensors and metadata. This Triton-owned
+    contract layer performs the paged-block interpretation so serving glue does
+    not duplicate KV layout semantics.
+    """
+
+    if block_table is None:
+        raise ValueError("terminal replay block_table missing")
+    if req_idx < 0 or req_idx >= int(block_table.shape[0]):
+        raise ValueError("terminal replay boundary req_idx outside block_table")
+    if context_tokens <= 0:
+        raise ValueError("terminal replay context_tokens invalid")
+    if block_size <= 0:
+        raise ValueError("terminal replay block_size invalid")
+    if terminal_query_tokens <= 0:
+        raise ValueError("terminal replay terminal_query_tokens invalid")
+
+    query_tnd = _as_tnd(query, num_query_heads, head_size, "query")
+    if int(query_tnd.shape[0]) < int(terminal_query_tokens):
+        raise ValueError("query has fewer rows than terminal_query_tokens")
+
+    blocks_needed = (int(context_tokens) + int(block_size) - 1) // int(block_size)
+    if blocks_needed > int(block_table.shape[1]):
+        raise ValueError("terminal replay block_table lacks context blocks")
+    block_ids = block_table[int(req_idx), :blocks_needed].to(
+        device=key.device,
+        dtype=torch.long,
+    )
+    key_blocks = torch.index_select(key, 0, block_ids)
+    value_blocks = torch.index_select(value, 0, block_ids)
+    key_tnd = key_blocks.reshape(-1, int(num_kv_heads), int(head_size))[
+        : int(context_tokens)
+    ].clone()
+    value_tnd = value_blocks.reshape(-1, int(num_kv_heads), int(head_size))[
+        : int(context_tokens)
+    ].clone()
+    query_tnd = query_tnd[: int(terminal_query_tokens)].clone()
+    return (
+        query_tnd,
+        key_tnd,
+        value_tnd,
+        {
+            "logical_kv_source": "triton-ascend-paged-cache-block-table",
+            "boundary_req_idx": int(req_idx),
+            "block_size": int(block_size),
+            "context_tokens": int(context_tokens),
+            "query_heads": int(num_query_heads),
+            "kv_heads": int(num_kv_heads),
+            "head_size": int(head_size),
+        },
+    )
+
+
 def _as_tnd(
     tensor: torch.Tensor,
     heads: int | None,

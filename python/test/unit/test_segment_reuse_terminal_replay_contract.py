@@ -8,6 +8,7 @@ from triton.extension.segment_reuse_terminal_replay import (
     generate_segment_reuse_splitfuse_body_isolation_mask,
     generate_segment_reuse_splitfuse_terminal_replay_mask,
     generate_segment_reuse_terminal_replay_mask,
+    materialize_segment_reuse_terminal_replay_tensors,
     prove_segment_reuse_terminal_replay_output_semantics,
     prove_segment_reuse_terminal_replay_mask_semantics,
 )
@@ -266,6 +267,56 @@ def test_terminal_replay_output_differential_fails_closed_for_invalid_window():
     assert proof["semantic_proven"] is False
     assert proof["semantic_reason"] == "terminal_replay_output_differential_failed"
     assert proof["error_type"] == "ValueError"
+
+
+def test_materialize_terminal_replay_tensors_from_paged_block_table():
+    query = torch.arange(2 * 2 * 3, dtype=torch.float32).reshape(2, 2, 3)
+    key = torch.arange(4 * 4 * 1 * 3, dtype=torch.float32).reshape(4, 4, 1, 3)
+    value = key + 1000
+    block_table = torch.tensor([[2, 0], [1, 3]], dtype=torch.int64)
+
+    query_tnd, key_tnd, value_tnd, metadata = materialize_segment_reuse_terminal_replay_tensors(
+        query,
+        key,
+        value,
+        block_table=block_table,
+        req_idx=1,
+        context_tokens=6,
+        block_size=4,
+        terminal_query_tokens=2,
+        num_query_heads=2,
+        num_kv_heads=1,
+        head_size=3,
+    )
+
+    expected_key = torch.cat([key[1], key[3]], dim=0)[:6]
+    expected_value = torch.cat([value[1], value[3]], dim=0)[:6]
+    assert torch.equal(query_tnd, query)
+    assert torch.equal(key_tnd, expected_key)
+    assert torch.equal(value_tnd, expected_value)
+    assert metadata["logical_kv_source"] == "triton-ascend-paged-cache-block-table"
+    assert metadata["boundary_req_idx"] == 1
+
+
+def test_materialize_terminal_replay_tensors_fails_closed_without_block_table():
+    query = torch.randn(1, 2, 4)
+    key = torch.randn(2, 4, 1, 4)
+    value = torch.randn(2, 4, 1, 4)
+
+    with pytest.raises(ValueError, match="block_table missing"):
+        materialize_segment_reuse_terminal_replay_tensors(
+            query,
+            key,
+            value,
+            block_table=None,
+            req_idx=0,
+            context_tokens=4,
+            block_size=4,
+            terminal_query_tokens=1,
+            num_query_heads=2,
+            num_kv_heads=1,
+            head_size=4,
+        )
 
 
 def _body_window_reference(
