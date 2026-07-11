@@ -23,6 +23,7 @@ include(${CMAKE_CURRENT_SOURCE_DIR}/safe_compile.cmake)
 # Options
 option(TRITON_BUILD_PYTHON_MODULE "Build Python Triton bindings" OFF)
 option(TRITON_BUILD_PROTON "Build the Triton Proton profiler" ON)
+option(TRITON_BUILD_TOOLS "Build Triton command-line tools and test helpers" ON)
 option(TRITON_BUILD_UT "Build C++ Triton Unit Tests" ON)
 option(TRITON_BUILD_WITH_CCACHE "Build with ccache (if available)" ON)
 set(TRITON_CODEGEN_BACKENDS "" CACHE STRING "Enable different codegen backends")
@@ -243,6 +244,18 @@ if(TRITON_BUILD_PYTHON_MODULE)
     add_subdirectory(third_party/${CODEGEN_BACKEND})
   endforeach()
 
+  # Some core Triton Python bindings and GPU transform libraries still include
+  # AMD/NVIDIA IR headers and link against their C++ support libraries.  Keep
+  # those support targets available even when the active packaged backend tuple
+  # is Ascend-only; backend packaging remains controlled by
+  # TRITON_CODEGEN_BACKENDS above.
+  foreach(SUPPORT_BACKEND nvidia amd)
+    list(FIND TRITON_CODEGEN_BACKENDS ${SUPPORT_BACKEND} SUPPORT_BACKEND_INDEX)
+    if (SUPPORT_BACKEND_INDEX EQUAL -1)
+      add_subdirectory(third_party/${SUPPORT_BACKEND})
+    endif()
+  endforeach()
+
   if (TRITON_BUILD_PROTON)
     add_subdirectory(third_party/proton)
     list(APPEND TRITON_PLUGIN_NAMES "proton")
@@ -389,8 +402,10 @@ if(TRITON_ENABLE_COVERAGE_HITEST)
   set_property(GLOBAL PROPERTY RULE_LAUNCH_LINK hitestwrapper)
 endif()
 
-add_subdirectory(bin)
-add_subdirectory(test)
+if(TRITON_BUILD_TOOLS)
+  add_subdirectory(bin)
+  add_subdirectory(test)
+endif()
 
 if(TRITON_BUILD_UT)
   add_subdirectory(unittest)
