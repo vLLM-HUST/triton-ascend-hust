@@ -281,15 +281,23 @@ if(TRITON_BUILD_PYTHON_MODULE)
 
   get_property(triton_libs GLOBAL PROPERTY TRITON_LIBS)
   get_property(triton_plugins GLOBAL PROPERTY TRITON_PLUGINS)
+
+  list(FIND TRITON_CODEGEN_BACKENDS amd TRITON_HAS_AMD_BACKEND)
+  list(FIND TRITON_CODEGEN_BACKENDS nvidia TRITON_HAS_NVIDIA_BACKEND)
+  if(TRITON_BUILD_RUNTIME_TOOLS_ONLY)
+    if(TRITON_HAS_AMD_BACKEND EQUAL -1)
+      list(FILTER triton_libs EXCLUDE REGEX ".*(AMD|AMDGPU|ROCDL).*")
+    endif()
+    if(TRITON_HAS_NVIDIA_BACKEND EQUAL -1)
+      list(FILTER triton_libs EXCLUDE REGEX ".*(Nvidia|NVIDIA|NVGPU|NVWS).*")
+    endif()
+  endif()
+
   set(TRITON_LIBRARIES
     ${triton_libs}
     ${triton_plugins}
 
     # mlir
-    MLIRAMDGPUDialect
-    MLIRNVVMDialect
-    MLIRNVVMToLLVMIRTranslation
-    MLIRGPUToNVVMTransforms
     MLIRGPUToGPURuntimeTransforms
     MLIRGPUTransforms
     MLIRIR
@@ -301,24 +309,38 @@ if(TRITON_BUILD_PYTHON_MODULE)
     MLIRSupport
     MLIRTargetLLVMIRExport
     MLIRMathToLLVM
-    MLIRROCDLToLLVMIRTranslation
     MLIRGPUDialect
     MLIRSCFToControlFlow
     MLIRIndexToLLVM
-    MLIRGPUToROCDLTransforms
     MLIRUBToLLVM
 
     # LLVM
     LLVMPasses
-    LLVMNVPTXCodeGen
-    # LLVMNVPTXAsmPrinter
-    LLVMAMDGPUCodeGen
-    LLVMAMDGPUAsmParser
 
     Python3::Module
     pybind11::headers
 
   )
+
+  if(NOT TRITON_HAS_NVIDIA_BACKEND EQUAL -1)
+    list(APPEND TRITON_LIBRARIES
+      MLIRNVVMDialect
+      MLIRNVVMToLLVMIRTranslation
+      MLIRGPUToNVVMTransforms
+      LLVMNVPTXCodeGen
+      # LLVMNVPTXAsmPrinter
+    )
+  endif()
+
+  if(NOT TRITON_HAS_AMD_BACKEND EQUAL -1)
+    list(APPEND TRITON_LIBRARIES
+      MLIRAMDGPUDialect
+      MLIRROCDLToLLVMIRTranslation
+      MLIRGPUToROCDLTransforms
+      LLVMAMDGPUCodeGen
+      LLVMAMDGPUAsmParser
+    )
+  endif()
   if(CMAKE_SYSTEM_PROCESSOR MATCHES "aarch64" OR # Linux arm64
      CMAKE_SYSTEM_PROCESSOR MATCHES "arm64" OR # macOS arm64
      CMAKE_OSX_ARCHITECTURES MATCHES "arm64")  # also macOS arm64
@@ -359,10 +381,10 @@ if(TRITON_BUILD_PYTHON_MODULE)
                   ${PYTHON_SRC_PATH}/interpreter.cc
                   ${PYTHON_SRC_PATH}/llvm.cc)
 
-  if(TARGET TritonAMDGPUIR)
+  if(NOT TRITON_HAS_AMD_BACKEND EQUAL -1 AND TARGET TritonAMDGPUIR)
     target_link_libraries(triton PRIVATE TritonAMDGPUIR)
   endif()
-  if(TARGET TritonAMDUtils)
+  if(NOT TRITON_HAS_AMD_BACKEND EQUAL -1 AND TARGET TritonAMDUtils)
     target_link_libraries(triton PRIVATE TritonAMDUtils)
   endif()
 
