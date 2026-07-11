@@ -133,6 +133,25 @@ class BackendInstaller:
         ]
 
 
+def get_in_tree_backend_names():
+    default_backends = ["ascend", "nvidia", "amd"]
+    requested = os.getenv("TRITON_CODEGEN_BACKENDS")
+    if requested is None:
+        return default_backends
+
+    backends = [backend.strip() for backend in requested.replace(",", ";").split(";") if backend.strip()]
+    if not backends:
+        raise RuntimeError("TRITON_CODEGEN_BACKENDS was set but did not name any backends")
+
+    unknown = sorted(set(backends) - set(default_backends))
+    if unknown:
+        raise RuntimeError(
+            "TRITON_CODEGEN_BACKENDS may only select in-tree backends "
+            f"{default_backends}; got unsupported backend(s): {unknown}"
+        )
+    return backends
+
+
 # Taken from https://github.com/pytorch/pytorch/blob/master/tools/setup_helpers/env.py
 def check_env_flag(name: str, default: str = "") -> bool:
     return os.getenv(name, default).upper() in ["ON", "1", "YES", "TRUE", "Y"]
@@ -744,7 +763,7 @@ def download_and_copy_dependencies():
     )
 
 
-backends = [*BackendInstaller.copy(["ascend", "nvidia", "amd"]), *BackendInstaller.copy_externals()]
+backends = [*BackendInstaller.copy(get_in_tree_backend_names()), *BackendInstaller.copy_externals()]
 
 
 def get_package_dirs():
