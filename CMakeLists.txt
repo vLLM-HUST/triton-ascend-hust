@@ -245,10 +245,9 @@ if(TRITON_BUILD_PYTHON_MODULE)
 
   if (TRITON_BUILD_PROTON)
     add_subdirectory(third_party/proton)
+    list(APPEND TRITON_PLUGIN_NAMES "proton")
+    add_subdirectory(third_party/proton/Dialect)
   endif()
-  # We always build proton dialect
-  list(APPEND TRITON_PLUGIN_NAMES "proton")
-  add_subdirectory(third_party/proton/Dialect)
 
   get_property(triton_libs GLOBAL PROPERTY TRITON_LIBS)
   get_property(triton_plugins GLOBAL PROPERTY TRITON_PLUGINS)
@@ -376,7 +375,9 @@ if(NOT TRITON_BUILD_PYTHON_MODULE)
   foreach(CODEGEN_BACKEND ${TRITON_CODEGEN_BACKENDS})
     add_subdirectory(third_party/${CODEGEN_BACKEND})
   endforeach()
-  add_subdirectory(third_party/proton/Dialect)
+  if (TRITON_BUILD_PROTON)
+    add_subdirectory(third_party/proton/Dialect)
+  endif()
 endif()
 
 find_package(Threads REQUIRED)
