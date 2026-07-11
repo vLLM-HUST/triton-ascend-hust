@@ -409,6 +409,11 @@ def materialize_segment_reuse_terminal_replay_tensors(
         : int(context_tokens)
     ].clone()
     query_tnd = query_tnd[: int(terminal_query_tokens)].clone()
+    _validate_terminal_replay_materialized_inputs(
+        query_tnd,
+        key_tnd,
+        value_tnd,
+    )
     return (
         query_tnd,
         key_tnd,
@@ -423,6 +428,23 @@ def materialize_segment_reuse_terminal_replay_tensors(
             "head_size": int(head_size),
         },
     )
+
+
+def _tensor_nonzero(tensor: torch.Tensor) -> bool:
+    return bool(tensor.numel() > 0 and tensor.float().abs().sum().item() > 0)
+
+
+def _validate_terminal_replay_materialized_inputs(
+    query: torch.Tensor,
+    key: torch.Tensor,
+    value: torch.Tensor,
+) -> None:
+    if not _tensor_nonzero(query):
+        raise ValueError("terminal replay query materialized all-zero")
+    if not _tensor_nonzero(key):
+        if _tensor_nonzero(value):
+            raise ValueError("terminal replay key materialized all-zero")
+        raise ValueError("terminal replay key/value materialized all-zero")
 
 
 def _as_tnd(

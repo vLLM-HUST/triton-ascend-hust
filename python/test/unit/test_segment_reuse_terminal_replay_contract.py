@@ -319,6 +319,45 @@ def test_materialize_terminal_replay_tensors_fails_closed_without_block_table():
         )
 
 
+def test_materialize_terminal_replay_tensors_rejects_all_zero_query_or_key():
+    block_table = torch.tensor([[0, 1]], dtype=torch.int64)
+    query = torch.zeros(2, 2, 4)
+    key = torch.randn(2, 4, 1, 4)
+    value = torch.randn(2, 4, 1, 4)
+
+    with pytest.raises(ValueError, match="query materialized all-zero"):
+        materialize_segment_reuse_terminal_replay_tensors(
+            query,
+            key,
+            value,
+            block_table=block_table,
+            req_idx=0,
+            context_tokens=8,
+            block_size=4,
+            terminal_query_tokens=2,
+            num_query_heads=2,
+            num_kv_heads=1,
+            head_size=4,
+        )
+
+    query = torch.randn(2, 2, 4)
+    key.zero_()
+    with pytest.raises(ValueError, match="key materialized all-zero"):
+        materialize_segment_reuse_terminal_replay_tensors(
+            query,
+            key,
+            value,
+            block_table=block_table,
+            req_idx=0,
+            context_tokens=8,
+            block_size=4,
+            terminal_query_tokens=2,
+            num_query_heads=2,
+            num_kv_heads=1,
+            head_size=4,
+        )
+
+
 def _body_window_reference(
     query: torch.Tensor,
     key: torch.Tensor,
