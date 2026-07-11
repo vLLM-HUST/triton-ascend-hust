@@ -188,17 +188,35 @@ add_llvm_executable(triton-mlir-opt triton-mlir-opt.cpp PARTIAL_SOURCES_INTENDED
 llvm_update_compile_flags(triton-mlir-opt)
 
 set(TRITON_MLIR_OPT_LIBS)
-if(NOT TRITON_BUILD_RUNTIME_TOOLS_ONLY)
+if(TRITON_BUILD_RUNTIME_TOOLS_ONLY)
+  target_compile_definitions(triton-mlir-opt PRIVATE TRITON_BUILD_RUNTIME_TOOLS_ONLY)
+  list(APPEND TRITON_MLIR_OPT_LIBS
+    # MLIR runtime dialects needed to parse and bytecode-emit Ascend Linalg IR.
+    MLIROptLib
+    MLIRPass
+    MLIRArithDialect
+    MLIRControlFlowDialect
+    MLIRFuncDialect
+    MLIRIndexDialect
+    MLIRLinalgDialect
+    MLIRMathDialect
+    MLIRMemRefDialect
+    MLIRSCFDialect
+    MLIRTensorDialect
+  )
+else()
   list(APPEND TRITON_MLIR_OPT_LIBS ${triton_libs})
+  list(APPEND TRITON_MLIR_OPT_LIBS
+    # MLIR core
+    MLIROptLib
+    MLIRPass
+    MLIRRegisterAllDialects
+    MLIRRegisterAllPasses
+    MLIRTransforms
+  )
 endif()
 
 list(APPEND TRITON_MLIR_OPT_LIBS
-  # MLIR core
-  MLIROptLib
-  MLIRPass
-  MLIRRegisterAllDialects
-  MLIRRegisterAllPasses
-  MLIRTransforms
   # Core BishengIR dialect libraries
   BiShengIRAnnotationDialect
   BiShengIRHACCDialect

@@ -23,16 +23,39 @@
 // BishengIR includes
 #include "bishengir/InitAllDialects.h"
 
+#ifdef TRITON_BUILD_RUNTIME_TOOLS_ONLY
+#include "mlir/Dialect/Arith/IR/Arith.h"
+#include "mlir/Dialect/ControlFlow/IR/ControlFlowOps.h"
+#include "mlir/Dialect/Func/IR/FuncOps.h"
+#include "mlir/Dialect/Index/IR/IndexDialect.h"
+#include "mlir/Dialect/Linalg/IR/Linalg.h"
+#include "mlir/Dialect/Math/IR/Math.h"
+#include "mlir/Dialect/MemRef/IR/MemRef.h"
+#include "mlir/Dialect/SCF/IR/SCF.h"
+#include "mlir/Dialect/Tensor/IR/Tensor.h"
+#else
 #include "mlir/InitAllDialects.h"
 #include "mlir/InitAllExtensions.h"
 #include "mlir/InitAllPasses.h"
+#endif
 #include "mlir/Tools/mlir-opt/MlirOptMain.h"
 #include "llvm/Support/InitLLVM.h"
 
 int main(int argc, char **argv) {
-  // Register all MLIR dialects and passes
   mlir::DialectRegistry registry;
+
+#ifdef TRITON_BUILD_RUNTIME_TOOLS_ONLY
+  registry.insert<mlir::arith::ArithDialect, mlir::cf::ControlFlowDialect,
+                  mlir::func::FuncDialect, mlir::index::IndexDialect,
+                  mlir::linalg::LinalgDialect, mlir::math::MathDialect,
+                  mlir::memref::MemRefDialect, mlir::scf::SCFDialect,
+                  mlir::tensor::TensorDialect>();
+#else
+  // Full developer tool builds keep MLIR's complete dialect/pass surface.
   mlir::registerAllDialects(registry);
+  mlir::registerAllExtensions(registry);
+  mlir::registerAllPasses();
+#endif
 
   // Register BishengIR dialects and passes
   bishengir::registerAllDialects(registry);
