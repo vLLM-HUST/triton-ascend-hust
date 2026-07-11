@@ -31,6 +31,14 @@ ASCEND_TERMINAL_REPLAY_OUTPUT_DIFFERENTIAL_PROOF = (
 )
 
 
+class TerminalReplayMaterializationError(ValueError):
+    """Fail-closed terminal replay materialization error with a stable reason."""
+
+    def __init__(self, reason: str, message: str | None = None):
+        self.reason = reason
+        super().__init__(message or reason)
+
+
 def _mask_values(dtype: torch.dtype) -> tuple[object, object]:
     if dtype == torch.bool:
         return True, False
@@ -400,14 +408,24 @@ def materialize_segment_reuse_terminal_replay_tensors(
         device=key.device,
         dtype=torch.long,
     )
-    key_blocks = torch.index_select(key, 0, block_ids)
-    value_blocks = torch.index_select(value, 0, block_ids)
-    key_tnd = key_blocks.reshape(-1, int(num_kv_heads), int(head_size))[
-        : int(context_tokens)
-    ].clone()
-    value_tnd = value_blocks.reshape(-1, int(num_kv_heads), int(head_size))[
-        : int(context_tokens)
-    ].clone()
+    key_tnd = _materialize_paged_kv_cache(
+        key,
+        block_ids,
+        context_tokens=int(context_tokens),
+        block_size=int(block_size),
+        num_kv_heads=int(num_kv_heads),
+        head_size=int(head_size),
+        name="key",
+    )
+    value_tnd = _materialize_paged_kv_cache(
+        value,
+        block_ids,
+        context_tokens=int(context_tokens),
+        block_size=int(block_size),
+        num_kv_heads=int(num_kv_heads),
+        head_size=int(head_size),
+        name="value",
+    )
     query_tnd = query_tnd[: int(terminal_query_tokens)].clone()
     _validate_terminal_replay_materialized_inputs(
         query_tnd,
@@ -426,8 +444,116 @@ def materialize_segment_reuse_terminal_replay_tensors(
             "query_heads": int(num_query_heads),
             "kv_heads": int(num_kv_heads),
             "head_size": int(head_size),
+            "key_layout": _paged_kv_layout_name(
+                key,
+                block_size=int(block_size),
+                num_kv_heads=int(num_kv_heads),
+                head_size=int(head_size),
+            ),
+            "value_layout": _paged_kv_layout_name(
+                value,
+                block_size=int(block_size),
+                num_kv_heads=int(num_kv_heads),
+                head_size=int(head_size),
+            ),
         },
     )
+
+
+def _paged_kv_layout_name(
+    tensor: torch.Tensor,
+    *,
+    block_size: int,
+    num_kv_heads: int,
+    head_size: int,
+) -> str:
+    shape = tuple(int(dim) for dim in tensor.shape)
+    matches: list[str] = []
+    if tensor.dim() == 3 and shape[1] == block_size:
+        matches.append("block_token_flat")
+    if tensor.dim() == 4:
+        if shape[1:] == (block_size, num_kv_heads, head_size):
+            matches.append("block_token_head_dim")
+        if shape[1:] == (num_kv_heads, block_size, head_size):
+            matches.append("block_head_token_dim")
+        if shape[1:] == (num_kv_heads, head_size, block_size):
+            matches.append("block_head_dim_token")
+    if tensor.dim() == 5:
+        nz = shape[-1]
+        if (
+            nz > 0
+            and head_size % nz == 0
+            and shape[1:] == (num_kv_heads, head_size // nz, block_size, nz)
+        ):
+            matches.append("block_head_dimchunk_token_nz")
+    if len(matches) == 1:
+        return matches[0]
+    if len(matches) > 1:
+        raise TerminalReplayMaterializationError(
+            "terminal_replay_ambiguous_cache_layout",
+            "ambiguous paged KV layout for terminal replay: "
+            f"{shape} matches {matches}",
+        )
+    raise TerminalReplayMaterializationError(
+        f"terminal_replay_unsupported_cache_layout_{len(shape)}d",
+        f"unsupported {len(shape)}D paged KV layout for terminal replay: {shape}",
+    )
+
+
+def _materialize_paged_kv_cache(
+    cache: torch.Tensor,
+    block_ids: torch.Tensor,
+    *,
+    context_tokens: int,
+    block_size: int,
+    num_kv_heads: int,
+    head_size: int,
+    name: str,
+) -> torch.Tensor:
+    layout = _paged_kv_layout_name(
+        cache,
+        block_size=block_size,
+        num_kv_heads=num_kv_heads,
+        head_size=head_size,
+    )
+    blocks = torch.index_select(cache, 0, block_ids)
+    if layout == "block_token_flat":
+        logical = blocks.reshape(-1, num_kv_heads, head_size)
+    elif layout == "block_token_head_dim":
+        logical = blocks.reshape(-1, num_kv_heads, head_size)
+    elif layout == "block_head_token_dim":
+        logical = (
+            blocks.permute(0, 2, 1, 3)
+            .contiguous()
+            .reshape(-1, num_kv_heads, head_size)
+        )
+    elif layout == "block_head_dim_token":
+        logical = (
+            blocks.permute(0, 3, 1, 2)
+            .contiguous()
+            .reshape(-1, num_kv_heads, head_size)
+        )
+    elif layout == "block_head_dimchunk_token_nz":
+        logical = (
+            blocks.permute(0, 3, 1, 2, 4)
+            .contiguous()
+            .reshape(
+                -1,
+                num_kv_heads,
+                head_size,
+            )
+        )
+    else:  # pragma: no cover - guarded by _paged_kv_layout_name.
+        raise TerminalReplayMaterializationError(
+            "terminal_replay_unsupported_cache_layout",
+            f"unsupported paged KV layout for {name}: {layout}",
+        )
+    if int(logical.shape[0]) < int(context_tokens):
+        raise TerminalReplayMaterializationError(
+            "terminal_replay_context_exceeds_materialized_kv",
+            f"{name} materialized fewer tokens than context_tokens",
+        )
+    return logical[: int(context_tokens)].clone()
 
 
 def _tensor_nonzero(tensor: torch.Tensor) -> bool:
@@ -440,11 +566,20 @@ def _validate_terminal_replay_materialized_inputs(
     value: torch.Tensor,
 ) -> None:
     if not _tensor_nonzero(query):
-        raise ValueError("terminal replay query materialized all-zero")
+        raise TerminalReplayMaterializationError(
+            "terminal_replay_query_all_zero",
+            "terminal replay query materialized all-zero",
+        )
     if not _tensor_nonzero(key):
         if _tensor_nonzero(value):
-            raise ValueError("terminal replay key materialized all-zero")
-        raise ValueError("terminal replay key/value materialized all-zero")
+            raise TerminalReplayMaterializationError(
+                "terminal_replay_key_all_zero_value_nonzero",
+                "terminal replay key materialized all-zero while value is nonzero",
+            )
+        raise TerminalReplayMaterializationError(
+            "terminal_replay_key_value_all_zero",
+            "terminal replay key/value materialized all-zero",
+        )
 
 
 def _as_tnd(

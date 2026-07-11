@@ -4,6 +4,7 @@ import torch
 from triton.extension.segment_reuse_terminal_replay import (
     ASCEND_FIA_SPLITFUSE_BODY_WINDOW_PROOF,
     ASCEND_TERMINAL_REPLAY_OUTPUT_DIFFERENTIAL_PROOF,
+    TerminalReplayMaterializationError,
     generate_segment_reuse_body_isolation_mask,
     generate_segment_reuse_splitfuse_body_isolation_mask,
     generate_segment_reuse_splitfuse_terminal_replay_mask,
@@ -296,6 +297,107 @@ def test_materialize_terminal_replay_tensors_from_paged_block_table():
     assert torch.equal(value_tnd, expected_value)
     assert metadata["logical_kv_source"] == "triton-ascend-paged-cache-block-table"
     assert metadata["boundary_req_idx"] == 1
+    assert metadata["key_layout"] == "block_token_head_dim"
+    assert metadata["value_layout"] == "block_token_head_dim"
+
+
+@pytest.mark.parametrize(
+    ("layout", "make_cache", "expected_from"),
+    [
+        (
+            "block_token_flat",
+            lambda base: base.reshape(base.shape[0], base.shape[1], -1),
+            lambda base: base,
+        ),
+        (
+            "block_head_token_dim",
+            lambda base: base.permute(0, 2, 1, 3).contiguous(),
+            lambda base: base,
+        ),
+        (
+            "block_head_dim_token",
+            lambda base: base.permute(0, 2, 3, 1).contiguous(),
+            lambda base: base,
+        ),
+        (
+            "block_head_dimchunk_token_nz",
+            lambda base: base.reshape(3, 3, 2, 2, 2)
+            .permute(0, 2, 3, 1, 4)
+            .contiguous(),
+            lambda base: base,
+        ),
+    ],
+)
+def test_materialize_terminal_replay_tensors_supports_ascend_cache_layouts(
+    layout,
+    make_cache,
+    expected_from,
+):
+    block_size = 3
+    head_size = 4
+    query = torch.arange(2 * 2 * head_size, dtype=torch.float32).reshape(
+        2,
+        2,
+        head_size,
+    ) + 1
+    logical_key = torch.arange(3 * block_size * 2 * head_size, dtype=torch.float32).reshape(
+        3,
+        block_size,
+        2,
+        head_size,
+    ) + 10
+    logical_value = logical_key + 1000
+    block_table = torch.tensor([[2, 0]], dtype=torch.int64)
+
+    _, key_tnd, value_tnd, metadata = materialize_segment_reuse_terminal_replay_tensors(
+        query,
+        make_cache(logical_key),
+        make_cache(logical_value),
+        block_table=block_table,
+        req_idx=0,
+        context_tokens=5,
+        block_size=block_size,
+        terminal_query_tokens=2,
+        num_query_heads=2,
+        num_kv_heads=2,
+        head_size=head_size,
+    )
+
+    expected_key = torch.cat(
+        [expected_from(logical_key)[2], expected_from(logical_key)[0]],
+        dim=0,
+    )[:5]
+    expected_value = torch.cat(
+        [expected_from(logical_value)[2], expected_from(logical_value)[0]],
+        dim=0,
+    )[:5]
+    assert torch.equal(key_tnd, expected_key)
+    assert torch.equal(value_tnd, expected_value)
+    assert metadata["key_layout"] == layout
+    assert metadata["value_layout"] == layout
+
+
+def test_materialize_terminal_replay_tensors_rejects_ambiguous_cache_layout():
+    query = torch.randn(2, 2, 4)
+    key = torch.randn(2, 2, 4, 4)
+    value = torch.randn(2, 2, 4, 4)
+    block_table = torch.tensor([[0]], dtype=torch.int64)
+
+    with pytest.raises(TerminalReplayMaterializationError) as exc:
+        materialize_segment_reuse_terminal_replay_tensors(
+            query,
+            key,
+            value,
+            block_table=block_table,
+            req_idx=0,
+            context_tokens=4,
+            block_size=4,
+            terminal_query_tokens=2,
+            num_query_heads=2,
+            num_kv_heads=2,
+            head_size=4,
+        )
+    assert exc.value.reason == "terminal_replay_ambiguous_cache_layout"
 
 
 def test_materialize_terminal_replay_tensors_fails_closed_without_block_table():
@@ -325,7 +427,7 @@ def test_materialize_terminal_replay_tensors_rejects_all_zero_query_or_key():
     key = torch.randn(2, 4, 1, 4)
     value = torch.randn(2, 4, 1, 4)
 
-    with pytest.raises(ValueError, match="query materialized all-zero"):
+    with pytest.raises(TerminalReplayMaterializationError) as query_exc:
         materialize_segment_reuse_terminal_replay_tensors(
             query,
             key,
@@ -339,10 +441,11 @@ def test_materialize_terminal_replay_tensors_rejects_all_zero_query_or_key():
             num_kv_heads=1,
             head_size=4,
         )
+    assert query_exc.value.reason == "terminal_replay_query_all_zero"
 
     query = torch.randn(2, 2, 4)
     key.zero_()
-    with pytest.raises(ValueError, match="key materialized all-zero"):
+    with pytest.raises(TerminalReplayMaterializationError) as key_exc:
         materialize_segment_reuse_terminal_replay_tensors(
             query,
             key,
@@ -356,6 +459,30 @@ def test_materialize_terminal_replay_tensors_rejects_all_zero_query_or_key():
             num_kv_heads=1,
             head_size=4,
         )
+    assert key_exc.value.reason == "terminal_replay_key_all_zero_value_nonzero"
+
+
+def test_materialize_terminal_replay_tensors_rejects_unsupported_cache_layout():
+    query = torch.randn(2, 2, 4)
+    key = torch.randn(2, 3, 5, 7)
+    value = torch.randn(2, 3, 5, 7)
+    block_table = torch.tensor([[0]], dtype=torch.int64)
+
+    with pytest.raises(TerminalReplayMaterializationError) as exc:
+        materialize_segment_reuse_terminal_replay_tensors(
+            query,
+            key,
+            value,
+            block_table=block_table,
+            req_idx=0,
+            context_tokens=3,
+            block_size=4,
+            terminal_query_tokens=2,
+            num_query_heads=2,
+            num_kv_heads=2,
+            head_size=4,
+        )
+    assert exc.value.reason == "terminal_replay_unsupported_cache_layout_4d"
 
 
 def _body_window_reference(
