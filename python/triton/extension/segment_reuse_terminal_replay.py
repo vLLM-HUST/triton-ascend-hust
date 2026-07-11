@@ -400,6 +400,11 @@ def materialize_segment_reuse_terminal_replay_tensors(
     query_tnd = _as_tnd(query, num_query_heads, head_size, "query")
     if int(query_tnd.shape[0]) < int(terminal_query_tokens):
         raise ValueError("query has fewer rows than terminal_query_tokens")
+    _validate_terminal_replay_raw_inputs(
+        query_tnd[: int(terminal_query_tokens)],
+        key,
+        value,
+    )
 
     blocks_needed = (int(context_tokens) + int(block_size) - 1) // int(block_size)
     if blocks_needed > int(block_table.shape[1]):
@@ -558,6 +563,30 @@ def _materialize_paged_kv_cache(
 
 def _tensor_nonzero(tensor: torch.Tensor) -> bool:
     return bool(tensor.numel() > 0 and tensor.float().abs().sum().item() > 0)
+
+
+def _validate_terminal_replay_raw_inputs(
+    query: torch.Tensor,
+    key: torch.Tensor,
+    value: torch.Tensor,
+) -> None:
+    """Fail closed before layout decoding when runtime inputs are already zero."""
+
+    if not _tensor_nonzero(query):
+        raise TerminalReplayMaterializationError(
+            "terminal_replay_raw_query_all_zero",
+            "terminal replay raw query is all-zero before materialization",
+        )
+    if not _tensor_nonzero(key):
+        if _tensor_nonzero(value):
+            raise TerminalReplayMaterializationError(
+                "terminal_replay_raw_key_all_zero_value_nonzero",
+                "terminal replay raw key is all-zero while raw value is nonzero",
+            )
+        raise TerminalReplayMaterializationError(
+            "terminal_replay_raw_key_value_all_zero",
+            "terminal replay raw key/value are all-zero",
+        )
 
 
 def _validate_terminal_replay_materialized_inputs(

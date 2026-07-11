@@ -421,7 +421,7 @@ def test_materialize_terminal_replay_tensors_fails_closed_without_block_table():
         )
 
 
-def test_materialize_terminal_replay_tensors_rejects_all_zero_query_or_key():
+def test_materialize_terminal_replay_tensors_rejects_all_zero_raw_query_or_key():
     block_table = torch.tensor([[0, 1]], dtype=torch.int64)
     query = torch.zeros(2, 2, 4)
     key = torch.randn(2, 4, 1, 4)
@@ -441,7 +441,7 @@ def test_materialize_terminal_replay_tensors_rejects_all_zero_query_or_key():
             num_kv_heads=1,
             head_size=4,
         )
-    assert query_exc.value.reason == "terminal_replay_query_all_zero"
+    assert query_exc.value.reason == "terminal_replay_raw_query_all_zero"
 
     query = torch.randn(2, 2, 4)
     key.zero_()
@@ -459,7 +459,67 @@ def test_materialize_terminal_replay_tensors_rejects_all_zero_query_or_key():
             num_kv_heads=1,
             head_size=4,
         )
-    assert key_exc.value.reason == "terminal_replay_key_all_zero_value_nonzero"
+    assert key_exc.value.reason == "terminal_replay_raw_key_all_zero_value_nonzero"
+
+
+def test_materialize_terminal_replay_tensors_distinguishes_selected_zero_key_block():
+    block_table = torch.tensor([[0]], dtype=torch.int64)
+    query = torch.randn(2, 2, 4)
+    key = torch.randn(2, 4, 1, 4)
+    value = torch.randn(2, 4, 1, 4)
+    key[0].zero_()
+
+    with pytest.raises(TerminalReplayMaterializationError) as exc:
+        materialize_segment_reuse_terminal_replay_tensors(
+            query,
+            key,
+            value,
+            block_table=block_table,
+            req_idx=0,
+            context_tokens=4,
+            block_size=4,
+            terminal_query_tokens=2,
+            num_query_heads=2,
+            num_kv_heads=1,
+            head_size=4,
+        )
+    assert exc.value.reason == "terminal_replay_key_all_zero_value_nonzero"
+
+
+def test_materialize_terminal_replay_tensors_preserves_nonzero_live_like_qk():
+    block_size = 8
+    head_size = 8
+    num_kv_heads = 2
+    query = torch.arange(2 * 4 * head_size, dtype=torch.float32).reshape(
+        2,
+        4,
+        head_size,
+    ) + 1
+    logical_key = torch.arange(
+        3 * block_size * num_kv_heads * head_size,
+        dtype=torch.float32,
+    ).reshape(3, block_size, num_kv_heads, head_size) + 10
+    logical_value = logical_key + 1000
+    block_table = torch.tensor([[2, 1]], dtype=torch.int64)
+
+    query_tnd, key_tnd, value_tnd, metadata = materialize_segment_reuse_terminal_replay_tensors(
+        query,
+        logical_key,
+        logical_value,
+        block_table=block_table,
+        req_idx=0,
+        context_tokens=12,
+        block_size=block_size,
+        terminal_query_tokens=2,
+        num_query_heads=4,
+        num_kv_heads=num_kv_heads,
+        head_size=head_size,
+    )
+
+    assert query_tnd.float().abs().sum().item() > 0
+    assert key_tnd.float().abs().sum().item() > 0
+    assert value_tnd.float().abs().sum().item() > 0
+    assert metadata["key_layout"] == "block_token_head_dim"
 
 
 def test_materialize_terminal_replay_tensors_rejects_unsupported_cache_layout():
