@@ -1,0 +1,8 @@
+cmake_minimum_required(VERSION 3.16)
+project(dense_bf16_swiglu_host_contract LANGUAGES CXX)
+
+add_executable(dense_bf16_swiglu_host_contract host_reference.cpp)
+target_compile_features(dense_bf16_swiglu_host_contract PRIVATE cxx_std_17)
+target_compile_options(dense_bf16_swiglu_host_contract PRIVATE -Wall -Wextra -Werror)
+enable_testing()
+add_test(NAME dense_bf16_swiglu_host_contract COMMAND dense_bf16_swiglu_host_contract)

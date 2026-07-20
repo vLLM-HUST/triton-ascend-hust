@@ -1,0 +1,34 @@
+{
+  "schema_version": 1,
+  "protocol_sha256": "b9f3fd4c2b795bcc67293757c7adaf032c624540a8f7d25d830657a8f77465c3",
+  "package_state": "REQUEST_ONLY_NOT_AUTHORIZED",
+  "owner_repository": "triton-ascend-hust",
+  "owner_path": "third_party/ascend/prototypes/dense_bf16_swiglu",
+  "status": "stage0-static-prototype-not-cann-compiled",
+  "dtype": "bfloat16",
+  "accumulator_dtype": "float32",
+  "operation": "down(silu(gate(x)) * up(x))",
+  "weight_layouts": {
+    "gate": "row-major [intermediate, hidden]",
+    "up": "row-major [intermediate, hidden]",
+    "down": "row-major [hidden, intermediate]"
+  },
+  "models": [
+    {"name": "Qwen2.5-7B", "hidden": 3584, "intermediate": 18944},
+    {"name": "Qwen2.5-14B", "hidden": 5120, "intermediate": 13824}
+  ],
+  "natural_m": [1, 4, 8, 16, 32],
+  "schedule_space": {
+    "block_m": [1, 4, 8, 16, 32],
+    "block_n": [64, 128],
+    "block_k": [64, 128],
+    "candidate_count": 20
+  },
+  "abi": ["x", "gate_weight", "up_weight", "down_weight", "y", "workspace", "tiling"],
+  "offline_only": true,
+  "cann_compile_verified": false,
+  "npu_correctness_verified": false,
+  "performance_verified": false,
+  "npu_execution_authorized": false,
+  "reservation_request_generation_allowed": false
+}
