@@ -1,0 +1,7 @@
+cmake_minimum_required(VERSION 3.16)
+project(dense_bf16_materialization_pair_host LANGUAGES CXX)
+enable_testing()
+add_executable(dense_bf16_materialization_pair_host host_reference.cpp)
+target_compile_features(dense_bf16_materialization_pair_host PRIVATE cxx_std_17)
+target_compile_options(dense_bf16_materialization_pair_host PRIVATE -Wall -Wextra -Werror)
+add_test(NAME dense_bf16_materialization_pair_host COMMAND dense_bf16_materialization_pair_host)

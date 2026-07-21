@@ -1,0 +1,36 @@
+{
+  "schema_version": 1,
+  "owner_repository": "triton-ascend-hust",
+  "owner_path": "third_party/ascend/prototypes/dense_bf16_materialization_pair",
+  "status": "offline-qualified-awaiting-grant-bound-cann-build-and-correctness",
+  "independent_from": "python/triton_kernels/triton_kernels/mlp_materialization_pair.py",
+  "arms": {
+    "Tmat": "dense_bf16_pair_tmat writes packed gate/up",
+    "Tfused": "dense_bf16_pair_tfused applies SwiGLU before producer store"
+  },
+  "same_schedule_identity_required": true,
+  "dtype": "bfloat16",
+  "accumulator_dtype": "float32",
+  "models": [
+    {"name": "Qwen2.5-7B", "hidden": 3584, "intermediate": 18944},
+    {"name": "Qwen2.5-14B", "hidden": 5120, "intermediate": 13824}
+  ],
+  "natural_m": [1, 4, 8, 16, 32],
+  "schedule_space": {
+    "block_m": [8, 16, 32],
+    "block_h": [64, 128, 256],
+    "block_i": [64, 128, 256],
+    "candidate_count": 27
+  },
+  "tail_fields": ["tail_m", "tail_h", "tail_i"],
+  "block_dim_rule": "ceil(m/block_m) * ceil(intermediate/block_i)",
+  "abi_tmat": ["x", "gate_weight", "up_weight", "packed", "workspace", "tiling"],
+  "abi_tfused": ["x", "gate_weight", "up_weight", "activation", "workspace", "tiling"],
+  "scalar_get_set_forbidden": true,
+  "offline_contract_qualified": true,
+  "cann_compile_verified": false,
+  "npu_correctness_verified": false,
+  "performance_verified": false,
+  "timing_eligible_after_grant_compile_and_correctness": true,
+  "execution_authorized": false
+}
