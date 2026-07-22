@@ -297,6 +297,7 @@ def test_materialize_terminal_replay_tensors_from_paged_block_table():
     assert torch.equal(value_tnd, expected_value)
     assert metadata["logical_kv_source"] == "triton-ascend-paged-cache-block-table"
     assert metadata["boundary_req_idx"] == 1
+    assert metadata["selected_block_ids"] == [1, 3]
     assert metadata["key_layout"] == "block_token_head_dim"
     assert metadata["value_layout"] == "block_token_head_dim"
 

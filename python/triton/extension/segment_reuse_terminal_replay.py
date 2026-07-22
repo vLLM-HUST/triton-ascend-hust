@@ -444,6 +444,7 @@ def materialize_segment_reuse_terminal_replay_tensors(
         {
             "logical_kv_source": "triton-ascend-paged-cache-block-table",
             "boundary_req_idx": int(req_idx),
+            "selected_block_ids": [int(value) for value in block_ids.detach().cpu().tolist()],
             "block_size": int(block_size),
             "context_tokens": int(context_tokens),
             "query_heads": int(num_query_heads),
