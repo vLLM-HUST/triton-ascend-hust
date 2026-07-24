@@ -670,7 +670,39 @@ class CMakeBuild(build_ext):
             print(f"Copied triton-opt to {triton_opt_dst}")
 
 
+def active_backend_names():
+    """Return the in-tree backends selected for this build.
+
+    Keep the historical all-backend default for existing builds, but allow
+    downstream runtimes to select only the backend they can execute.  This is
+    required on Ascend hosts: constructing the NVIDIA/AMD CMake subtrees also
+    downloads unrelated toolchains and can register dialect directories that
+    are not part of the target runtime.
+    """
+    raw_backends = os.getenv("TRITON_CODEGEN_BACKENDS", "").strip()
+    if not raw_backends:
+        return ["ascend", "nvidia", "amd"]
+
+    selected = [name.strip() for name in re.split(r"[;,]", raw_backends) if name.strip()]
+    supported = {"ascend", "nvidia", "amd"}
+    unknown = sorted(set(selected) - supported)
+    if unknown:
+        raise RuntimeError(f"Unsupported TRITON_CODEGEN_BACKENDS: {', '.join(unknown)}; "
+                           f"supported backends are: {', '.join(sorted(supported))}")
+    if not selected:
+        raise RuntimeError("TRITON_CODEGEN_BACKENDS must select at least one backend")
+    return selected
+
+
+def backend_enabled(name):
+    return any(backend.name == name for backend in backends)
+
+
 def download_and_copy_dependencies():
+    if not backend_enabled("nvidia"):
+        print("Skipping NVIDIA toolchain downloads because the NVIDIA backend is disabled")
+        return
+
     nvidia_version_path = os.path.join(get_base_dir(), "cmake", "nvidia-toolchain-version.json")
     with open(nvidia_version_path, "r") as nvidia_version_file:
         # parse this json file to get the version of the nvidia toolchain
@@ -744,7 +776,7 @@ def download_and_copy_dependencies():
     )
 
 
-backends = [*BackendInstaller.copy(["ascend", "nvidia", "amd"]), *BackendInstaller.copy_externals()]
+backends = [*BackendInstaller.copy(active_backend_names()), *BackendInstaller.copy_externals()]
 
 
 def get_package_dirs():
