@@ -687,10 +687,8 @@ def active_backend_names():
     supported = {"ascend", "nvidia", "amd"}
     unknown = sorted(set(selected) - supported)
     if unknown:
-        raise RuntimeError(
-            f"Unsupported TRITON_CODEGEN_BACKENDS: {', '.join(unknown)}; "
-            f"supported backends are: {', '.join(sorted(supported))}"
-        )
+        raise RuntimeError(f"Unsupported TRITON_CODEGEN_BACKENDS: {', '.join(unknown)}; "
+                           f"supported backends are: {', '.join(sorted(supported))}")
     if not selected:
         raise RuntimeError("TRITON_CODEGEN_BACKENDS must select at least one backend")
     return selected
