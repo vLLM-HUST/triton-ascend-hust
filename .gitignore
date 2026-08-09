@@ -15,6 +15,10 @@ python/triton_kernels/triton*.egg-info/
 python/triton/_C/
 python/triton/FileCheck
 
+# CMake/LLVM-generated metadata emitted by local builds.
+DartConfiguration.tcl
+tablegen_compile_commands.yml
+
 # Backends copied from submodules
 python/triton/backends/*
 !python/triton/backends/__init__.py
