@@ -1,0 +1,29 @@
+{
+  "schema_version": "1.0",
+  "canonical_registry": "https://github.com/vLLM-HUST/vllm-hust-docs/tree/codex/ecosystem-architecture-reorganization/registry",
+  "repository": "https://github.com/vLLM-HUST/triton-ascend-hust",
+  "repository_role": "runtime_substrate",
+  "relation_to_runtime": "provides_runtime_substrate",
+  "lifecycle": "incubating",
+  "artifacts": [
+    {
+      "id": "triton-ascend-compiler",
+      "artifact_type": "runtime_component",
+      "system_role": "compiler_kernel",
+      "delivery_model": "native_distribution",
+      "execution_planes": ["native", "device", "offline"],
+      "integration_contracts": [],
+      "integration_surfaces": ["Triton language and compiler APIs", "Ascend CANN toolchain"]
+    }
+  ],
+  "system_boundaries": {
+    "is": ["an Ascend compiler and kernel-development runtime substrate"],
+    "is_not": [
+      "a vLLM platform profile or plugin bundle",
+      "an inference scheduler or control plane",
+      "proof that every upper-layer runtime is compatible"
+    ]
+  },
+  "validation": ["make test", "pre-commit run --all-files"],
+  "compatibility_document": "README.md"
+}
