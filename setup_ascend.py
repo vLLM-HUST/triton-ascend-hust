@@ -358,7 +358,10 @@ def _get_ascend_cmake_args():
 def _get_install_requirements():
     install_requires = [
         "attrs==24.2.0",
-        "numpy==1.26.4",
+        # Keep compatibility with the legacy 1.26 ABI while allowing modern
+        # serving stacks (for example OpenCV 5) to select NumPy 2.  SciPy
+        # 1.13.1 sets the effective upper compatibility boundary at 2.3.
+        "numpy>=1.26.4,<2.3",
         "scipy==1.13.1;python_version<'3.13'",
         "scipy==1.15.1;python_version>='3.13'",
         "decorator==5.1.1",
