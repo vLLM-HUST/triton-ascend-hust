@@ -377,22 +377,12 @@ def _get_install_requirements():
     return [*install_requires]
 
 
-def _select_ascend_backends(mod):
-    """Select Ascend plus explicitly supplied external plugins."""
-
-    # The dedicated Ascend wheel must not compile or package the in-tree
-    # NVIDIA/AMD backends. Keep explicitly supplied external plugins, but make
-    # Ascend the only built-in backend for this entrypoint.
-    ascend_backend = mod.BackendInstaller.prepare("ascend")
-    external_backends = [backend for backend in mod.backends if backend.is_external]
-    mod.backends = [ascend_backend, *external_backends]
-
-
 def _patch_module(mod):
     """Apply all Ascend-specific overrides to the imported setup_triton module."""
 
-    # 1. Select the dedicated backend set.
-    _select_ascend_backends(mod)
+    # 1. Add "ascend" to the in-tree backends list.
+    ascend_backend = mod.BackendInstaller.prepare("ascend")
+    mod.backends = [ascend_backend, *mod.backends]
 
     # 2. Replace LLVM package info with Ascend build.
     _orig_get_llvm_package_info = mod.get_llvm_package_info
