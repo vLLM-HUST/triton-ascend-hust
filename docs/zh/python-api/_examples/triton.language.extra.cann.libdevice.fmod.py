@@ -1,7 +1,16 @@
+import os
+
+os.environ.setdefault("TRITON_ENABLE_LIBDEVICE_SIMT", "1")
+
+import pytest
 import triton
 import triton.language as tl
 import triton.language.extra.cann.libdevice as libdevice
 import torch
+from triton.backends.ascend.utils import triton_enable_libdevice_simt
+
+_SIMT_SKIP_MSG = ("SIMT libdevice ops are not supported on A3; "
+                  "only runs on Ascend 950 with TRITON_ENABLE_LIBDEVICE_SIMT=1; skipping.")
 
 
 @triton.jit
@@ -18,6 +27,7 @@ def triton_kernel(input, input2, output, n_elements, XBLOCK: tl.constexpr, XBLOC
         tl.store(output + (x0), tmp2, mask=mask)
 
 
+@pytest.mark.skipif(not triton_enable_libdevice_simt(), reason=_SIMT_SKIP_MSG)
 def test_fmod():
     param_list = [(2, 256, 4), 2, 2048, 1024]
     shape, ncore, xblock, xblock_sub = param_list
@@ -34,4 +44,7 @@ def test_fmod():
 
 
 if __name__ == "__main__":
-    test_fmod()
+    if not triton_enable_libdevice_simt():
+        print(_SIMT_SKIP_MSG)
+    else:
+        test_fmod()

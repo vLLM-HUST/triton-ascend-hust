@@ -1,8 +1,5 @@
 import os
 
-# The libdevice SIMT ops below are A5-only (Ascend 910_95 / 950) and are
-# additionally gated by this env switch; set it so the examples run on A5
-# hardware without extra configuration.
 os.environ.setdefault("TRITON_ENABLE_LIBDEVICE_SIMT", "1")
 
 import pytest
@@ -22,7 +19,7 @@ def torch_sad_reference(x0, x1, x2):
     assert x2.device.type == "cpu"
     assert x0.dtype == torch.int32
     assert x1.dtype == torch.int32
-    assert x2.dtype == torch.uint32
+    assert x2.dtype == torch.int32
     assert x0.shape == x1.shape == x2.shape
 
     return (torch.abs(x0 - x1).to(torch.int64) + x2.to(torch.int64)).to(torch.int32)
@@ -47,7 +44,7 @@ def triton_kernel(input0, input1, input2, output, n_elements, XBLOCK: tl.constex
 def test_sad():
     x0 = (torch.randint(1, 16, (8, ))).to(torch.int32)
     x1 = (torch.randint(1, 16, (8, ))).to(torch.int32)
-    x2 = (torch.randint(1, 16, (8, ))).to(torch.uint32)
+    x2 = (torch.randint(1, 16, (8, ))).to(torch.int32)
     expected = (torch_sad_reference(x0, x1, x2)).npu()
     x0 = x0.npu()
     x1 = x1.npu()

@@ -1,8 +1,5 @@
 import os
 
-# The libdevice SIMT ops below are A5-only (Ascend 910_95 / 950) and are
-# additionally gated by this env switch; set it so the examples run on A5
-# hardware without extra configuration.
 os.environ.setdefault("TRITON_ENABLE_LIBDEVICE_SIMT", "1")
 
 import pytest
