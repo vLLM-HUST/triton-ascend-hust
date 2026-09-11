@@ -6,9 +6,7 @@ from packaging.requirements import Requirement
 
 def _load_setup_ascend():
     root = Path(__file__).resolve().parents[4]
-    spec = importlib.util.spec_from_file_location(
-        "triton_ascend_setup_metadata", root / "setup_ascend.py"
-    )
+    spec = importlib.util.spec_from_file_location("triton_ascend_setup_metadata", root / "setup_ascend.py")
     assert spec is not None and spec.loader is not None
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
