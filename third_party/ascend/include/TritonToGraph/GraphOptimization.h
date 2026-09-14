@@ -246,7 +246,7 @@ constexpr GraphOptimizationRuleMask kFixedDefaultOffGraphOptimizationRuleMask =
         GraphOptimizationRuleId::ContiguousBlockAccessFormation);
 
 constexpr GraphOptimizationRuleMask kDefaultGraphOptimizationRuleMask =
-    kLegacyGraphOptimizationRuleMask;
+    kDefaultEligibleGraphOptimizationRuleMask;
 
 constexpr GraphOptimizationRuleMask kAllGraphOptimizationRuleMask =
     kKnownGraphOptimizationRuleMask;
@@ -254,8 +254,8 @@ constexpr GraphOptimizationRuleMask kAllGraphOptimizationRuleMask =
 static_assert(kLegacyGraphOptimizationRuleMask == 511,
               "legacy graph optimization rule mask is an ABI contract");
 static_assert(kDefaultGraphOptimizationRuleMask ==
-                  kLegacyGraphOptimizationRuleMask,
-              "stage-00 rules must remain disabled by default");
+                  kDefaultEligibleGraphOptimizationRuleMask,
+              "IAT and PTSM must remain enabled by default");
 static_assert(kKnownGraphOptimizationRuleMask ==
                   (kDefaultEligibleGraphOptimizationRuleMask |
                    kFixedDefaultOffGraphOptimizationRuleMask),
@@ -311,6 +311,7 @@ struct GraphOptimizationOptions {
   // compile_mode="simt_only".  Keep the source selector rather than a
   // second derived force flag so every consumer follows one mode contract.
   std::string compileMode = "simd_simt_template";
+  bool compileOn91095 = false;
   IndependentAxisTensorizeRuleOptions independentAxisTensorize;
   PersistentTaskStripMiningRuleOptions persistentTaskStripMining;
   ResidentLoadForwardingRuleOptions residentLoadForwarding;
