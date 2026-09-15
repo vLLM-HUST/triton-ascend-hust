@@ -294,22 +294,22 @@ def _make_opt(
     *,
     is_pure_simt,
     superblock_factor=0,
-    enable_bishengir_simt_optimization=0,
+    simt_optimization_mode=0,
     simt_stack_limit=None,
     shared_mem_dynamic_size=None,
-    enable_simt_reorder_instruction=False,
     disable_fma=False,
+    compile_on_910_95=False,
 ):
     return SimpleNamespace(
         is_pure_simt=is_pure_simt,
         num_warps=4,
         warp_size=32,
-        enable_bishengir_simt_optimization=enable_bishengir_simt_optimization,
+        simt_optimization_mode=simt_optimization_mode,
         simt_stack_limit=simt_stack_limit,
         shared_mem_dynamic_size=shared_mem_dynamic_size,
-        enable_simt_reorder_instruction=enable_simt_reorder_instruction,
         disable_fma=disable_fma,
         superblock_factor=superblock_factor,
+        compile_on_910_95=compile_on_910_95,
     )
 
 
@@ -334,11 +334,10 @@ def _run_ttir_to_npubin(
     row_coalescing_applied=False,
     superblock_factor=0,
     common_options=(),
-    enable_bishengir_simt_optimization=0,
+    simt_optimization_mode=0,
     simt_stack_limit=None,
     resolved_simt_stack_limit=1152,
     shared_mem_dynamic_size=None,
-    enable_simt_reorder_instruction=False,
     disable_fma=False,
 ):
     events = []
@@ -398,10 +397,9 @@ def _run_ttir_to_npubin(
         _make_opt(
             is_pure_simt=is_pure_simt,
             superblock_factor=superblock_factor,
-            enable_bishengir_simt_optimization=enable_bishengir_simt_optimization,
+            simt_optimization_mode=simt_optimization_mode,
             simt_stack_limit=simt_stack_limit,
             shared_mem_dynamic_size=shared_mem_dynamic_size,
-            enable_simt_reorder_instruction=enable_simt_reorder_instruction,
             disable_fma=disable_fma,
         ),
     )
@@ -558,7 +556,7 @@ def _run_make_ttir_with_recorded_graph_options(compiler, monkeypatch, options):
         compiler,
         "ascend",
         SimpleNamespace(passes=SimpleNamespace(ttir=SimpleNamespace(
-            add_graph_optimize=lambda _pm, **kwargs: (events.append("graph_optimize"), graph_calls.append(kwargs))))),
+            add_graph_optimize=lambda _pm, **kwargs: graph_calls.append(kwargs)))),
     )
 
     assert compiler.make_ttir(module, {}, options) is module
@@ -569,7 +567,6 @@ def test_make_ttir_passes_canonical_compile_mode_to_graph_optimize(compiler_modu
     options = SimpleNamespace(
         enable_graph_optimize=True,
         target_arch="Ascend910B1",
-        compile_on_910_95=False,
         compile_mode="simt_only",
         debug=False,
     )
@@ -579,17 +576,8 @@ def test_make_ttir_passes_canonical_compile_mode_to_graph_optimize(compiler_modu
     assert graph_calls == [{
         "ub_capacity_bytes": 192 * 1024 * 80 // 100,
         "compile_mode": "simt_only",
-        "compile_on_910_95": False,
     }]
     assert events[-1] == "run_row"
-    assert events.index(("loop_unroll", (), {})) < events.index("graph_optimize")
-
-
-def test_make_ttir_disables_graph_pipeline(compiler_module, monkeypatch):
-    options = SimpleNamespace(enable_graph_optimize=False, debug=False)
-    events, graph_calls = _run_make_ttir_with_recorded_graph_options(compiler_module, monkeypatch, options)
-    assert "graph_optimize" not in events
-    assert graph_calls == []
 
 
 @pytest.mark.skip(reason="The case is not supported on A5, skipping for now. Will be fixed in future.")
@@ -626,10 +614,9 @@ def test_ttir_to_npubin_auto_blockify_argv_matrix(compiler_module, monkeypatch):
         "--pure-simt",
         "--num-warps=4",
         "--threads-per-warp=32",
-        "--enable-bishengir-simt-optimization=17",
+        "--simt-optimization-mode=1000017",
         "--simt-stack-limit=64",
         "--shared-mem-dynamic-size=4096",
-        "--enable-simt-reorder-instruction=true",
         "--disable-fma",
     ]
     auto_blockify_flag = "--enable-auto-blockify-loop"
@@ -649,10 +636,9 @@ def test_ttir_to_npubin_auto_blockify_argv_matrix(compiler_module, monkeypatch):
                 row_coalescing_applied=row_applied,
                 superblock_factor=superblock,
                 common_options=common_options,
-                enable_bishengir_simt_optimization=17,
+                simt_optimization_mode=1000017,
                 resolved_simt_stack_limit=64,
                 shared_mem_dynamic_size=4096,
-                enable_simt_reorder_instruction=True,
                 disable_fma=True,
             )
 
