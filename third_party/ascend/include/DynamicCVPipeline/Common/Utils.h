@@ -50,6 +50,7 @@ inline constexpr llvm::StringLiteral kAddFromMatmul =
 inline constexpr llvm::StringLiteral kMainLoop = "ssbuffer.main_loop";
 inline constexpr llvm::StringLiteral kTcoreType = "hivm.tcore_type";
 inline constexpr llvm::StringLiteral kIf = "ssbuffer.if";
+inline constexpr llvm::StringLiteral kSplittedIf = "ssbuffer.splitted_if";
 inline constexpr llvm::StringLiteral kIntraBuffer = "ssbuffer.intra_buffer";
 inline constexpr llvm::StringLiteral kIntraBufCount =
     "ssbuffer.intra_buf_count";
@@ -334,6 +335,10 @@ inline bool isTensorComputeOp(Operation *op) {
 // - arith.trunci: i32 -> i8
 std::optional<hivm::FixpipePreQuantMode>
 getFixpipePreQuantMode(Operation *truncOp);
+
+// Trace an operand's defining op back through C2C intermediate ops to find the
+// underlying producing op. Returns null when the operand has no defining op.
+Operation *getSourceThroughCIntermediateOps(Value operand);
 
 } // namespace CVPipeline
 } // namespace mlir
