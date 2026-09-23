@@ -8,7 +8,7 @@ The following is the release compatibility matrix for Triton-Ascend versions:
 
 | Triton-Ascend Version | Python Version | Manylinux Version | Hardware Platform | Hardware Product |
 | --- | --- | --- | --- | --- |
-| 3.2.0 | >=3.9, <=3.11 | glibc 2.27+, x86-64, aarch64  | Ascend NPU | Atlas A2/A3|
+| 3.2.0 | >=3.9, <=3.11 | glibc 2.27+, x86-64, aarch64  | Ascend NPU | Atlas A2 products/Atlas A3 products|
 
 ## Release Schedule
 

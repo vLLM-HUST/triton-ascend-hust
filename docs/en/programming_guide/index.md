@@ -201,7 +201,7 @@ The key to implementing parallel storage and computation is to properly design t
 
 ### Tiling Optimization
 
-Before the AI Core performs computation, data needs to be transferred to the on-chip memory. The on-chip memory space is usually much smaller than the total data volume to be processed by the AI Core. For example, the on-chip memory capacity of Atlas 800T/I A2 is 192 KB. After doublebuffer is enabled by default, the capacity is reduced to half of the original capacity. Therefore, data needs to be tiled during operator computation, and only a small part of the data is loaded and processed each time.
+Before the AI Core performs computation, data needs to be transferred to the on-chip memory. The on-chip memory space is usually much smaller than the total data volume to be processed by the AI Core. For example, the on-chip memory capacity of Atlas 800T A2/Atlas 800I A2 is 192 KB. After doublebuffer is enabled by default, the capacity is reduced to half of the original capacity. Therefore, data needs to be tiled during operator computation, and only a small part of the data is loaded and processed each time.
 
 - Example
 
@@ -338,7 +338,7 @@ large or block number is more than what user expect due to multi-buffer feature 
 
 1. **Trigger phase:** This error occurs during kernel compilation — the Ascend backend fails when converting MLIR to binary, not during program runtime; compilation failure means no executable binary was generated for the kernel.
 
-2. **Direct cause:** The compiler estimated that a single tile requires 3,072,256 bits of UB, while the hardware UB upper limit is 1,572,864 bits (A2 series, i.e., 192 KB), exceeding the limit by 1,499,392 bits (3,072,256 − 1,572,864 = 1,499,392), approximately 1.95 times the available capacity, resulting in a ub overflow.
+2. **Direct cause:** The compiler estimated that a single tile requires 3,072,256 bits of UB, while the hardware UB upper limit is 1,572,864 bits (Atlas A2 products, i.e., 192 KB), exceeding the limit by 1,499,392 bits (3,072,256 − 1,572,864 = 1,499,392), approximately 1.95 times the available capacity, resulting in a ub overflow.
 
 3. **Root cause:** ① The block size parameter (such as BLOCK_SIZE) is too large, resulting in too many elements in a single tile; ② Multi-buffer parallel storage and computation is enabled by default (the compiler-side configuration is `multiBuffer=True`, controlled by the user via the `multibuffer` parameter in `triton.Config` or kernel launch, enabled by default), creating multiple tensor copies for pipeline overlap between data transfer and computation, with some operators requiring additional local buffers, multiplying UB usage; ③ Too many intermediate tensors in the kernel, with cumulative usage exceeding the limit.
 
@@ -350,7 +350,7 @@ The key log fields are interpreted as follows:
 | `[ConvertLinalgRToBinary] encounters error`, `Failed to run BishengHIR pipeline` | The Ascend backend failed during the MLIR-to-binary conversion phase |
 | `ub overflow` | UB (Unified Buffer) overflow: the estimated on-chip buffer requirement during compilation exceeds the hardware capacity limit |
 | `requires 3072256 bits` | UB bits required for a single tile in this compilation: 3,072,256 bits (approximately 375 KB) |
-| `1572864 bits available` | Current hardware available UB upper limit: 1,572,864 bits, i.e., 192 KB (A2 series) |
+| `1572864 bits available` | Current hardware available UB upper limit: 1,572,864 bits, i.e., 192 KB (Atlas A2 products) |
 | `multi-buffer feature is enabled and some ops need extra local buffer` | Compiler hint: multi-buffer (parallel storage and computation with multiple buffers) is enabled, and some operators require additional local buffer copies, which amplifies UB usage |
 
 #### Resolution Steps
@@ -434,15 +434,15 @@ Process in the following order; recompile and verify after each step; stop once 
 | Pay attention to multi-buffer impact | The compiler enables parallel storage and computation by default (`multiBuffer=True`), and multi-buffering increases UB usage proportionally with the number of buffer copies; when UB is tight, set `multibuffer=False` in Config (see the "Parallel Storage and Computation" section of this document) |
 | Batch processing for long sequences | When the sequence length causes the estimated usage of a single tile to approach or exceed the UB limit, use a for loop within the kernel to load/compute/store in blocks along the sequence dimension, avoiding transferring the entire segment at once |
 
-UB usage estimation example: With 65,536 float32 elements (4 bytes) and double buffering (2 copies), a single tensor requires 65,536 × 4 × 2 × 8 = 4,194,304 bits, which already exceeds the A2 series available 1,572,864 bits; based on the A2 series 1,572,864 bits limit, the theoretical upper limit for a single float16 tensor with double buffering is approximately 49,152 elements (1,572,864 ÷ 8 ÷ 2 ÷ 2 = 49,152).
+UB usage estimation example: With 65,536 float32 elements (4 bytes) and double buffering (2 copies), a single tensor requires 65,536 × 4 × 2 × 8 = 4,194,304 bits, which already exceeds the Atlas A2 products available 1,572,864 bits; based on the Atlas A2 products 1,572,864 bits limit, the theoretical upper limit for a single float16 tensor with double buffering is approximately 49,152 elements (1,572,864 ÷ 8 ÷ 2 ÷ 2 = 49,152).
 
-[Note] The UB size of the A2 series products is 192KB (i.e., 1,572,864 bits). The on-chip memory specifications of each product series are as follows:
+[Note] The UB size of the Atlas A2 products is 192KB (i.e., 1,572,864 bits). The on-chip memory specifications of each product series are as follows:
 
 | Product Series | UB Capacity | L1 Capacity |
 | --- | --- | --- |
-| A2 series | 192K B | 512 KB |
-| A3 series | 192K B | 512 KB |
-| A5 series | 248K B | 512 KB |
+| Atlas A2 products | 192KB | 512KB |
+| Atlas A3 products | 192KB | 512KB |
+| Ascend 950PR&950DT products | 248KB | 512KB |
 
 ## Common Single-Core Data Computation
 

@@ -58,7 +58,7 @@ By manually selecting the optimal tiling configurations based on your actual sce
 
 Taking the GELU operator as an example, adjusting the tiling parameters helps effectively adapt to the on-chip cache capacity limit, thereby improving execution efficiency.
 
-Note: Atlas 800T/I A2 has an on-chip memory capacity of 192 KB. When designing the tiling strategy, ensure that the data volume of each computation cycle does not exceed this capacity.
+Note: Atlas 800T A2/Atlas 800I A2 has an on-chip memory capacity of 192 KB. When designing the tiling strategy, ensure that the data volume of each computation cycle does not exceed this capacity.
 
 #### Example GELU Operator
 

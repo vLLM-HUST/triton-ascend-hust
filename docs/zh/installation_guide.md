@@ -1,6 +1,7 @@
 # 安装指南
 
-**Triton-Ascend**是适配华为Ascend处理器的Triton优化版本，提供核函数自动调优、算子编译及部署能力。支持Ascend Atlas A2/A3/950系列产品，兼容Triton核心语法，并针对昇腾NPU特性进行了深度优化，包括自动解析核函数参数、优化内存访问逻辑、完善安全部署机制等。
+**Triton-Ascend**是适配华为Ascend处理器的Triton优化版本，提供核函数自动调优、算子编译及部署能力。支持Atlas A2系列产品、Atlas A3系列产品、Ascend 950PR&950DT系列产品，兼容Triton核心语法，并针对昇腾NPU特性进行了深度优化，包括自动解析核函数参数、优化内存访问逻辑、完善安全部署机制等。
+**Triton-Ascend**是适配华为Ascend处理器的Triton优化版本，提供核函数自动调优、算子编译及部署能力。支持Atlas A2系列产品、Atlas A3系列产品、Ascend 950PR&950DT系列产品，兼容Triton核心语法，并针对昇腾NPU特性进行了深度优化，包括自动解析核函数参数、优化内存访问逻辑、完善安全部署机制等。
 
 本指南指导开发者在**Ubuntu**环境下安装**Triton-Ascend**，涵盖快速安装、源码安装及镜像安装三种方式，并包含环境验证与常见问题排查。
 
@@ -8,7 +9,7 @@
 
 **硬件要求**
 
-- Ascend产品：支持Atlas A2/A3/950系列。
+- Ascend产品：支持Atlas A2系列产品、Atlas A3系列产品、Ascend 950PR&950DT系列产品。
 
 - NPU配置：建议单卡32GB及以上内存。
 
@@ -286,7 +287,7 @@ triton-ascend 3.2.1 requires triton==3.5.0, but you have triton 3.5.1 which is i
 
 **问题六：如何确认芯片类型？**
 
-可以使用npu-smi命令查看系统上的NPU型号。例如，在npu-smi info命令的输出中，“910B4”对应芯片类型A2（昇腾910b系列）：
+可以使用npu-smi命令查看系统上的NPU型号。例如，在npu-smi info命令的输出中，“910B4”对应芯片类型Atlas A2系列产品：
 
 ```text
 root@localhost:/# npu-smi  info

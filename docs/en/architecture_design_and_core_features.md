@@ -94,7 +94,7 @@ This project extends the support for Huawei Ascend NPU (using the CANN software 
 | 19  | buf_slot_num_of_veccore                       | NPU        | Configures the number of vector-core-local buffer slots.|
 | 20  | buf_slot_num_of_crosscore                     | NPU        | Configures the number of cross-core buffer slots.|
 | 21  | buf_slot_num_of_gm                            | NPU        | Configures the number of GM load buffer slots.|
-| 22  | compile_mode                                  | NPU        | Compilation mode: `"simd_simt_template"` (default) / `"simd"` / `"simt_only"`; `"simt_only"` is supported only on Ascend 950.|
+| 22  | compile_mode                                  | NPU        | Compilation mode: `"simd_simt_template"` (default) / `"simd"` / `"simt_only"`; `"simt_only"` is supported only on Ascend 950PR&950DT products.|
 
 See {ref}`Compiler Option Cleanup and Compatibility <compiler-option-cleanup-and-compatibility>` for deprecated-option compatibility and rename mappings.
 
@@ -215,9 +215,9 @@ TritonToLinalg converts ttir to linalg ir.
 | triton-to-hivm | Processes the block synchronization operations (`tl.sync_block_all`, `tl.sync_block_set`, and `tl.sync_block_wait`) of Triton and converts them into the cross-core synchronization instruction in the `HIVM` dialect of Ascend NPU. These instructions are used to manage synchronization and data dependencies in the multi-core pipeline, which is the key to pipeline optimization.| TritonCustomOpToHIVMSyncOpConversion | Converts Triton synchronization instructions to HIVM synchronization instructions.<br>• `sync_block_all`: synchronizes blocks globally.<br>• `sync_block_set`: sets a synchronization point.<br>• `sync_block_wait`: waits for a synchronization point.|
 | triton-to-llvm | Converts the inline assembly operation (`tl.inline_assembly`) in Triton to the inline assembly in the LLVM dialect, and finally maps it to a CCE hardware intrinsic function of Ascend NPU.| ElementwiseInlineAsmOpConversion | Converts `triton::ElementwiseInlineAsmOp` to `LLVM::InlineAsmOp`.|
 
-#### 3.2.3 SIMT Compiler (Ascend 950)
+#### 3.2.3 SIMT Compiler (Ascend 950PR&950DT products)
 
-Ascend 950 adds SIMT support alongside the SIMD path to accelerate **unstructured / discrete** memory access (for example, indirect-index load/store).
+Ascend 950PR&950DT products adds SIMT support alongside the SIMD path to accelerate **unstructured / discrete** memory access (for example, indirect-index load/store).
 Developers choose the compilation path via `compile_mode`.
 
 ##### 3.2.3.1 `compile_mode` Overview
@@ -234,7 +234,7 @@ Usage examples:
 # Pure SIMD
 kernel[grid](..., compile_mode="simd")
 
-# Hybrid (default; discrete access on 950 prefers SIMT)
+# Hybrid (default; discrete access on Ascend 950PR&950DT products  prefers SIMT)
 kernel[grid](..., compile_mode="simd_simt_template")
 
 # Pure SIMT
@@ -284,7 +284,7 @@ flowchart TD
 
 | Stage | `"simd"` | `"simd_simt_template"` | `"simt_only"` |
 |------|----------|--------------------------|---------------|
-| Discrete mask handling | Split into contiguous/discrete bounds and handle with load + select / store | On Ascend 950 with tensor rank ≤ 5: mark and defer to downstream; otherwise same as left | Not run |
+| Discrete mask handling | Split into contiguous/discrete bounds and handle with load + select / store | On Ascend 950PR&950DT products with tensor rank ≤ 5: mark and defer to downstream; otherwise same as left | Not run |
 | Unstructured access | Expand to scalar loops | Prefer SIMT indirect access (rank ≤ 5); fall back to scalar loops on failure | Not run |
 | TritonToLinalg | Standard Linalg IR lowering | Standard Linalg IR lowering | Not run |
 
@@ -293,11 +293,11 @@ flowchart TD
 Hybrid mode does **not** move the entire kernel to SIMT. Only discrete / unstructured access points use SIMT; the rest stays on SIMD:
 
 1. **Discrete mask handling**
-   - If the mask is non-contiguous and Ascend 950, hybrid mode, and rank ≤ 5 are all satisfied: do not rewrite IR; only mark for downstream SIMT handling.
+   - If the mask is non-contiguous and Ascend 950PR&950DT products, hybrid mode, and rank ≤ 5 are all satisfied: do not rewrite IR; only mark for downstream SIMT handling.
    - Otherwise (pure SIMD or conditions not met): split the mask into contiguous / discrete parts, bound global memory access with contiguous bounds, and merge results via select.
 
 2. **Unstructured access handling**
-   - In Ascend 950 hybrid mode, unstructured access or marked discrete access uses the SIMT fast path:
+   - In Ascend 950PR&950DT products hybrid mode, unstructured access or marked discrete access uses the SIMT fast path:
      - `load` / `store` → `indirect_load` / `indirect_store` (rank ≤ 5)
      - `atomic` operations → `hivm.custom(symbol="__builtin_indirect_atomic")`
    - If conditions are not met, fall back to scalar loops (same as `"simd"`).

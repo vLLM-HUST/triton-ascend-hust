@@ -59,7 +59,7 @@ xblock_sub：核内切分粒度（核内细粒度划分）
 
 以GELU算子为例，通过调整切分参数，可以有效适配片上缓存容量限制，从而提升执行效率。
 
-注：Atlas 800T/I A2产品的片上内存容量为192KB，因此在设计切分策略时需考虑该限制，确保每轮计算的数据量不超过片上内存容量。
+注：Atlas 800T A2训练服务器、Atlas 800I A2推理服务器的片上内存容量为192KB，因此在设计切分策略时需考虑该限制，确保每轮计算的数据量不超过片上内存容量。
 
 #### GELU算子示例
 
@@ -184,12 +184,12 @@ tl.load() 和 tl.store()
 
 | 选项      | 能力       | 是否开启 |
 | ----------------- | ------------ | ----------------- |
-| multibuffer                                   | 开启流水并行数据搬运  | 默认true； true , false。 autotune中可配置                     |
-| unit_flag                                     | cube搬出的一个优化项                                         | 默认None；true , false。  autotune中可配置                     |
-| limit_auto_multi_buffer_only_for_local_buffer | CV算子一个优化项，cube搬出的一个优化项                         | 默认None；true , false。 autotune中可配置 |
+| multibuffer                                   | 开启流水并行数据搬运  | 默认true；true , false。autotune中可配置                     |
+| unit_flag                                     | cube搬出的一个优化项                                         | 默认None；true , false。autotune中可配置                     |
+| limit_auto_multi_buffer_only_for_local_buffer | CV算子一个优化项，cube搬出的一个优化项                         | 默认None；true , false。autotune中可配置 |
 | limit_auto_multi_buffer_of_local_buffer       | cube算子开启double buffer具体的scope                         | 默认None；可取值 "no-limit" 或 "no-l0c"，autotune中可配置           |
 | set_workspace_multibuffer                     | 配置 workspace multi-buffer 档位，用于为 workspace 相关数据搬运启用多缓冲。 | 默认None；可取单个值，如 2 或 4；autotune中可配置候选值                            |
-| enable_hivm_auto_cv_balance                   | 启用或禁用自动 CV balance，用于在 CV 融合场景下平衡 Cube 与 Vector 执行。 | 默认None；true , false。 autotune中可配置 |
+| enable_hivm_auto_cv_balance                   | 启用或禁用自动 CV balance，用于在 CV 融合场景下平衡 Cube 与 Vector 执行。 | 默认None；true , false。autotune中可配置 |
 | tile_mix_vector_loop                          | CV算子的一个优化项，当前vector可以切几份                        | 默认None；可取单个值，如 2、4 或 8；autotune中可配置候选值                       |
 | tile_mix_cube_loop                            | CV算子一个优化项，当前cube可以切几份      | 默认None；可取单个值，如 2、4 或 8；autotune中可配置候选值                      |
 

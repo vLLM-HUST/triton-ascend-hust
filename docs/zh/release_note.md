@@ -8,7 +8,7 @@ Triton-Ascend 版本提供了一个稳定的代码基础快照，封装成可以
 
 | Triton-Ascend 版本 | Python 版本 | Manylinux 版本 | 硬件平台 | 硬件产品 |
 | --- | --- | --- | --- | --- |
-| 3.2.0 | >=3.9, <=3.11 | glibc 2.27+, x86-64, aarch64  | Ascend NPU | Atlas A2/A3|
+| 3.2.0 | >=3.9, <=3.11 | glibc 2.27+, x86-64, aarch64  | Ascend NPU | Atlas A2系列产品、Atlas A3系列产品|
 
 ## 发布计划
 

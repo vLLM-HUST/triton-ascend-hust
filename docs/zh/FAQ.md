@@ -74,7 +74,7 @@ A: 有集成性能分析工具（profiler），请参考 [算子性能调优方�
 **Q: 编译时报 "UB Overflow" 错误，如何解决？**
 
 A: UB Overflow 是 Triton-Ascend 开发中常见的问题，请参考 [UB Overflow 问题排查指南](./debug_guide/ub_overflow.md) 排查问题。如果不知道如何减小tiling来减少UB占用，可以使用Autotune来自动选择最优配置，Autotune的使用请参考[Triton-Ascend autotune 使用指南](./autotune_guide.md)。
-A5上可运行的算子迁移到A2/A3由于UB大小的差异可能导致UB Overflow，如果手动排查不出问题，也可采用Autotune自动选择最优配置。
+Ascend 950PR&950DT系列产品上可运行的算子迁移到Atlas A2系列产品、Atlas A3系列产品由于UB大小的差异可能导致UB Overflow，如果手动排查不出问题，也可采用Autotune自动选择最优配置。
 
 ## 8. Triton 使用限制
 
