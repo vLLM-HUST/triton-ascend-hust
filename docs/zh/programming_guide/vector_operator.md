@@ -30,7 +30,7 @@ def add_kernel(x_ptr, y_ptr, out_ptr, n_elements, BLOCK_SIZE: tl.constexpr):
 
 开发时优先检查三类问题：
 
-- **数据类型**：Ascend Vector 单元对不同整数类型的支持和性能不同。对于不影响精度的索引、长度、偏移类数据，优先使用 `int32`，可参考 [`triton-ascend-ops/tutorial/basic/001-vector_add.zh.md`](https://github.com/Ascend/triton-ascend-ops/blob/main/tutorial/basic/001-vector_add.py) 和 [`triton-ascend-ops/tutorial/basic/002-vector_cmp.zh.md`](https://github.com/Ascend/triton-ascend-ops/blob/main/tutorial/basic/002-vector_cmp.zh.md)。
+- **数据类型**：Ascend Vector 单元对不同整数类型的支持和性能不同。对于不影响精度的索引、长度、偏移类数据，优先使用 `int32`，可参考 [`001-vector_add.zh.md`](https://github.com/Ascend/triton-ascend-ops/blob/main/tutorial/basic/001-vector_add.zh.md) 和 [`002-vector_cmp.zh.md`](https://github.com/Ascend/triton-ascend-ops/blob/main/tutorial/basic/002-vector_cmp.zh.md)。
 - **BLOCK_SIZE**：BLOCK_SIZE 需要在 UB 容量内尽量大。若出现 UB overflow，先降低单次处理元素数，再考虑拆分子块。
 - **分核数**：NPU 物理 Vector Core 数量通常为几十个。小 tile 大 grid 的 GPU 写法迁移到 NPU 时，容易因多轮下发带来明显开销。
 
@@ -53,7 +53,13 @@ def add_kernel(x_ptr, y_ptr, out_ptr, n_elements, BLOCK_SIZE: tl.constexpr):
 典型的 UB 预算思路如下：
 
 ```python
-num_core = get_npu_properties()["num_vectorcore"]
+# 获取 NPU 硬件属性，详见“通用多核任务并行”一节
+import torch_npu
+import triton.runtime.driver as driver
+device = torch_npu.npu.current_device()
+properties = driver.active.utils.get_device_properties(device)
+num_core = properties["num_vectorcore"]
+
 block_size = triton.cdiv(indices_length, num_core)
 align_elems = 16
 block_x = triton.cdiv(min(num_columns, max_block_x), align_elems) * align_elems

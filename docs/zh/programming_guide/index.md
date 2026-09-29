@@ -183,10 +183,12 @@ def pick_kernel(
 
 各指标含义说明：
 
-- **aiv_mte2_time(μs)**：AI Vector（AIV）核上 MTE2（Move Engine 2）搬运阶段耗时，单位为微秒（μs），反映数据从全局内存搬运到片上内存（UB）的时间开销。
+- **aiv_mte2_time(μs)**：AI Vector（AIV）核上 MTE2（Memory Transfer Engine 2）搬运阶段耗时，单位为微秒（μs），反映数据从全局内存搬运到片上内存（UB）的时间开销。
 - **aiv_mte2_ratio**：MTE2 搬运时间占算子总执行时间的比例，数值越大说明搬运耗时占比越高，可用于评估搬运与计算的重叠程度。
 
 通过分析表格中的数据可以发现，优化前后的aiv_mte2_time(μs)和aiv_mte2_ratio差距较大，优化方案通过先将大部分数据搬运到UB上，减少小批量数据通过L2搬运到UB的次数，减少了L2搬运到UB上的总时间。
+
+> 注意：优化后的 aiv_mte2_time 反而更高，这是因为优化方案一次性将大量数据搬运到 UB（增加 MTE2 耗时），但消除了原先通过 L2 逐条搬运 UB 的低效路径，整体性能更优。
 
 ### 存算并行
 
@@ -625,6 +627,9 @@ Triton 算子处理多维张量时，核心思想是将高维数据映射到硬�
 ```python
 @triton.jit
 def matmul_kernel(a_ptr, b_ptr, c_ptr, M, N, K,
+                  stride_am, stride_ak,
+                  stride_bk, stride_bn,
+                  stride_cm, stride_cn,
                   BLOCK_M: tl.constexpr, BLOCK_N: tl.constexpr, BLOCK_K: tl.constexpr):
     # 1. 任务划分：计算当前 Block 在 M 和 N 维度上的坐标
     pid_m = tl.program_id(0)

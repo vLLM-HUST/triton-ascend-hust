@@ -20,10 +20,19 @@ CONSTRAINTS = {
     },
     "triton.extension.buffer.language.alloc": {
         "constraints": [
-            "DataType: Atlas A2/A3 products or Ascend 950PR&950DT products support int8, int16, int32, uint8, uint64, int64, fp32, bf16, bool. Does not support uint16, uint32, fp16.",
-            "Shape: Each element must be a positive integer.",
+            "Shape: each element must be a positive integer.",
             "Address space: must fit within the specified address space size limits.",
         ],
+        "dtype_support":
+        """
+            +--------------+-------+------+--------+-------+--------+-------+--------+-------+------+------+------+------+------------+-------------+------+
+            | 平台         | uint8 | int8 | uint16 | int16 | uint32 | int32 | uint64 | int64 | fp16 | fp32 | fp64 | bf16 | fp8e(e4m3) | fp8e5(e5m2) | bool |
+            +==============+=======+======+========+=======+========+=======+========+=======+======+======+======+======+============+=============+======+
+            | Ascend A2/A3 |   √   |  √   |   ×    |   √   |   ×    |   √   |   √    |   √   |  ×   |  √   |  ×   |  √   |     ×      |      ×      |  √   |
+            +--------------+-------+------+--------+-------+--------+-------+--------+-------+------+------+------+------+------------+-------------+------+
+            | Ascend 950   |   √   |  √   |   ×    |   √   |   ×    |   √   |   √    |   √   |  ×   |  √   |  ×   |  √   |     ×      |      ×      |  √   |
+            +--------------+-------+------+--------+-------+--------+-------+--------+-------+------+------+------+------+------------+-------------+------+
+            """,
         "example":
         "triton.extension.buffer.language.alloc",
     },
@@ -213,7 +222,8 @@ CONSTRAINTS = {
     },
     "triton.language.bitonic_merge": {
         "constraints": [],
-        "dtype_support": """
+        "dtype_support":
+        """
             +-------------------------------------+-------+------+--------+-------+--------+-------+--------+-------+------+------+------+------+------------+-------------+------+
             |                                     | uint8 | int8 | uint16 | int16 | uint32 | int32 | uint64 | int64 | fp16 | fp32 | fp64 | bf16 | fp8e(e4m3) | fp8e5(e5m2) | bool |
             +=====================================+=======+======+========+=======+========+=======+========+=======+======+======+======+======+============+=============+======+
@@ -222,7 +232,15 @@ CONSTRAINTS = {
             | Ascend 950PR&950DT products         | √     | √    | ×      | √     | ×      | √     | ×      | √     | √    | √    | ×    | √    | √          | √           | √    |
             +-------------------------------------+-------+------+--------+-------+--------+-------+--------+-------+------+------+------+------+------------+-------------+------+
             """,
-        "example": "triton.language.bitonic_merge",
+        "example":
+        "triton.language.bitonic_merge",
+        "replace_docstring": [
+            "Merge the values in ``input`` along the given dimension using a bitonic sorting network.",
+            "",
+            ":param input: the input tensor to be merge-sorted.",
+            ":param dim: the dimension along which to merge. If None, the last dimension is used.",
+            ":param descending: whether to sort in descending order. Default is False.",
+        ],
     },
     "triton.language.associative_scan": {
         "constraints": [
@@ -243,7 +261,8 @@ CONSTRAINTS = {
     },
     "triton.language.assume": {
         "constraints": [],
-        "dtype_support": """
+        "dtype_support":
+        """
             +-------------------------------------+-------+------+--------+-------+--------+-------+--------+-------+------+------+------+------+------------+-------------+------+
             |                                     | uint8 | int8 | uint16 | int16 | uint32 | int32 | uint64 | int64 | fp16 | fp32 | fp64 | bf16 | fp8e(e4m3) | fp8e5(e5m2) | bool |
             +=====================================+=======+======+========+=======+========+=======+========+=======+======+======+======+======+============+=============+======+
@@ -252,7 +271,13 @@ CONSTRAINTS = {
             | Ascend 950PR&950DT products         | ×     | ×    | ×      | ×     | ×      | ×     | ×      | ×     | ×    | ×    | ×    | ×    | ×          | ×           | ✓    |
             +-------------------------------------+-------+------+--------+-------+--------+-------+--------+-------+------+------+------+------+------------+-------------+------+
             """,
-        "example": "triton.language.assume",
+        "example":
+        "triton.language.assume",
+        "replace_docstring": [
+            "Allow the compiler to assume that the given condition is True.",
+            "",
+            ":param cond: the condition that the compiler may assume to be True.",
+        ],
     },
     "triton.language.atomic_add": {
         "constraints": [
@@ -1002,6 +1027,14 @@ CONSTRAINTS = {
         "example":
         "triton.language.extra.cann.extension.sync_block_wait",
     },
+    "triton.language.extra.cann.extension.sub_vec_num": {
+        "constraints": [
+            "Only valid in mixed AIC+AIV scenarios (Cube + Vector cores).",
+            "Using it in pure-Cube or pure-Vector kernels will cause a compilation error.",
+        ],
+        "example":
+        "triton.language.extra.cann.extension.sub_vec_num",
+    },
     "triton.language.flip": {
         "constraints": [],
         "dtype_support": """
@@ -1449,7 +1482,8 @@ CONSTRAINTS = {
         "constraints": [
             "``values``: rank must match the rank of ``input`` (e.g. ``[1, 1]`` for a 2-D input).",
         ],
-        "dtype_support": """
+        "dtype_support":
+        """
             +-------------------------------------+-------+------+--------+-------+--------+-------+--------+-------+------+------+------+------+------------+-------------+------+
             |                                     | uint8 | int8 | uint16 | int16 | uint32 | int32 | uint64 | int64 | fp16 | fp32 | fp64 | bf16 | fp8e(e4m3) | fp8e5(e5m2) | bool |
             +=====================================+=======+======+========+=======+========+=======+========+=======+======+======+======+======+============+=============+======+
@@ -1458,13 +1492,24 @@ CONSTRAINTS = {
             | Ascend 950PR&950DT products         | ✓     | ✓    | ✓      | ✓     | ✓      | ✓     | ✓      | ✓     | ✓    | ✓    | ×    | ✓    | ✓          | ✓           | ✓    |
             +-------------------------------------+-------+------+--------+-------+--------+-------+--------+-------+------+------+------+------+------------+-------------+------+
             """,
-        "example": "triton.language.max_constancy",
+        "example":
+        "triton.language.max_constancy",
+        "replace_docstring": [
+            "Let the compiler know that the first ``value`` elements in ``input`` are constant.",
+            "",
+            "For example, if ``values`` is [4], then each group of 4 values in ``input``",
+            "should all be equal, e.g. [0, 0, 0, 0, 1, 1, 1, 1].",
+            "",
+            ":param input: the input tensor.",
+            ":param values: the number of leading constant values per dimension.",
+        ],
     },
     "triton.language.max_contiguous": {
         "constraints": [
             "``values``: rank must match the rank of ``input`` (e.g. ``[1, 1]`` for a 2-D input).",
         ],
-        "dtype_support": """
+        "dtype_support":
+        """
             +-------------------------------------+-------+------+--------+-------+--------+-------+--------+-------+------+------+------+------+------------+-------------+------+
             |                                     | uint8 | int8 | uint16 | int16 | uint32 | int32 | uint64 | int64 | fp16 | fp32 | fp64 | bf16 | fp8e(e4m3) | fp8e5(e5m2) | bool |
             +=====================================+=======+======+========+=======+========+=======+========+=======+======+======+======+======+============+=============+======+
@@ -1473,7 +1518,14 @@ CONSTRAINTS = {
             | Ascend 950PR&950DT products         | ✓     | ✓    | ✓      | ✓     | ✓      | ✓     | ✓      | ✓     | ✓    | ✓    | ×    | ✓    | ✓          | ✓           | ✓    |
             +-------------------------------------+-------+------+--------+-------+--------+-------+--------+-------+------+------+------+------+------------+-------------+------+
             """,
-        "example": "triton.language.max_contiguous",
+        "example":
+        "triton.language.max_contiguous",
+        "replace_docstring": [
+            "Let the compiler know that the first ``value`` elements in ``input`` are contiguous.",
+            "",
+            ":param input: the input tensor.",
+            ":param values: the number of leading contiguous values per dimension.",
+        ],
     },
     "triton.language.maximum": {
         "constraints": [],
@@ -1577,6 +1629,12 @@ CONSTRAINTS = {
             """,
         "example":
         "triton.language.multiple_of",
+        "replace_docstring": [
+            "Let the compiler know that the values in ``input`` are all multiples of ``value``.",
+            "",
+            ":param input: the input tensor.",
+            ":param values: the divisor each leading value is a multiple of, per dimension.",
+        ],
     },
     "triton.language.neg": {
         "constraints": [],
@@ -1832,6 +1890,13 @@ CONSTRAINTS = {
             """,
         "example":
         "triton.language.sort",
+        "replace_docstring": [
+            "Sorts the values in ``x`` along the given dimension.",
+            "",
+            ":param x: the input tensor to be sorted.",
+            ":param dim: the dimension along which to sort. If None, the last dimension is used.",
+            ":param descending: whether to sort in descending order. Default is False.",
+        ],
     },
     "triton.language.topk": {
         "constraints": [],
@@ -1929,7 +1994,8 @@ CONSTRAINTS = {
     },
     "triton.language.static_print": {
         "constraints": [],
-        "dtype_support": """
+        "dtype_support":
+        """
             +-------------------------------------+-------+------+--------+-------+--------+-------+--------+-------+------+------+------+------+------------+-------------+------+
             |                                     | uint8 | int8 | uint16 | int16 | uint32 | int32 | uint64 | int64 | fp16 | fp32 | fp64 | bf16 | fp8e(e4m3) | fp8e5(e5m2) | bool |
             +=====================================+=======+======+========+=======+========+=======+========+=======+======+======+======+======+============+=============+======+
@@ -1938,7 +2004,18 @@ CONSTRAINTS = {
             | Ascend 950PR&950DT products         | ×     | ✓    | ×      | ✓     | ×      | ✓     | ×      | ✓     | ✓    | ✓    | ×    | ✓    | ×          | ×           | ✓    |
             +-------------------------------------+-------+------+--------+-------+--------+-------+--------+-------+------+------+------+------+------------+-------------+------+
             """,
-        "example": "triton.language.static_print",
+        "example":
+        "triton.language.static_print",
+        "replace_docstring": [
+            "Print the values at compile time.  The parameters are the same as the builtin :code:`print`.",
+            "",
+            "NOTE: Calling the Python builtin :code:`print` is not the same as calling this,",
+            "it instead maps to :code:`device_print`, which has special requirements for the arguments.",
+            "",
+            ":param values: the values to print at compile time.",
+            ":param sep: string inserted between values. Default is a single space.",
+            ":param end: string appended after the last value. Default is a newline.",
+        ],
     },
     "triton.language.static_assert": {
         "constraints": [
@@ -1956,6 +2033,13 @@ CONSTRAINTS = {
             """,
         "example":
         "triton.language.static_assert",
+        "replace_docstring": [
+            "Assert the condition at compile time.  Does not require that the :code:`TRITON_DEBUG`",
+            "environment variable is set.",
+            "",
+            ":param cond: the compile-time condition to assert.",
+            ":param msg: message displayed when the assertion fails. Default is an empty string.",
+        ],
     },
     "triton.language.static_range": {
         "constraints": [
@@ -2271,6 +2355,29 @@ CONSTRAINTS = {
             +-------------------------------------+-------+------+--------+-------+--------+-------+--------+-------+------+------+------+------+------------+-------------+------+
             """,
         "example": "triton.language.zeros_like",
+    },
+    "triton.language.tensor": {
+        "replace_docstring": [
+            "Represents an N-dimensional array of values or pointers.",
+            "",
+            ":code:`tensor` is the fundamental data structure in Triton programs.",
+            "Most functions in :py:mod:`triton.language` operate on and return tensors.",
+            "",
+            "Most of the named member functions here are duplicates of the free functions",
+            "in :code:`triton.language`. For example, :code:`triton.language.sqrt(x)` is",
+            "equivalent to :code:`x.sqrt()`.",
+            "",
+            ":code:`tensor` also defines most of the magic/dunder methods, so you can",
+            "write :code:`x+y`, :code:`x << 2`, etc.",
+        ],
+    },
+    "triton.language.tensor_descriptor": {
+        "replace_docstring": [
+            "A descriptor representing a tensor in global memory.",
+            "",
+            "Used together with :func:`make_tensor_descriptor`, :func:`load_tensor_descriptor`",
+            "and :func:`store_tensor_descriptor` to load/store blocks of data from global memory.",
+        ],
     },
     # --- tensor operator syntax (no tl. prefix; documented via doc stubs) ---
     "triton.language.invert": {
