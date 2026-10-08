@@ -89,6 +89,8 @@ if __name__ == "__main__":
     print(out[:4])
 ```
 
+<a id="compiler-options-reference"></a>
+
 ### 编译选项参考表
 
 编译选项配置参考下表：

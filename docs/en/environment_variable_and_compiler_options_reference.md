@@ -89,6 +89,8 @@ if __name__ == "__main__":
     print(out[:4])
 ```
 
+<a id="compiler-options-reference"></a>
+
 ### Compiler Option Reference Table
 
 The following table describes the options.
