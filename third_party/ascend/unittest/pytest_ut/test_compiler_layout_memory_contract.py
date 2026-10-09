@@ -126,6 +126,7 @@ def compiler_module():
             "_is_debug_line_info_disabled",
             "_is_auto_map_parallel_blocks_enabled",
             "force_disable_ffts",
+            "is_cann_version_at_least",
     ):
         setattr(utils_stub, name, return_false)
     for name in (
@@ -156,8 +157,12 @@ def compiler_module():
 
     cache_stub = types.ModuleType(cache_name)
     cache_stub._base32 = lambda value: str(value)
-    cache_stub.get_dump_manager = lambda *_args, **_kwargs: SimpleNamespace(cache_dir="", put=lambda *_args, **_kwargs:
-                                                                            None)
+    dump_dir = Path("/fake/dump")
+    cache_stub.get_dump_manager = lambda *_args, **_kwargs: SimpleNamespace(
+        cache_dir=str(dump_dir),
+        _make_path=lambda filename: str(dump_dir / filename),
+        put=lambda *_args, **_kwargs: None,
+    )
 
     # Initialize the installed Triton package before temporarily replacing its
     # cache module below.  Loading compiler.py starts from triton._C; doing it
@@ -422,6 +427,7 @@ def _run_linalg_to_npubin(compiler, monkeypatch, function_name, has_blacklist_op
     commands = []
     parsed_metadata = defaultdict(
         lambda: None, {
+            "hash": "layout-memory-contract-test",
             "target": SimpleNamespace(arch="Ascend910B"),
             "program_grid_transforms": None,
             "program_grid_mapping_applied": False,
@@ -935,7 +941,8 @@ def test_multibuffer_legacy_options_are_preserved_without_ta_warnings(compiler_m
 
 def _capture_multibuffer_command(compiler, monkeypatch, is_a5, requested, derived=None):
     options = _parse_options(compiler, "Ascend950PR" if is_a5 else "Ascend910B4", requested)
-    metadata = dict(options.__dict__, mix_mode="mix", bitcodes=None, auto_blockify_enabled=False)
+    metadata = dict(options.__dict__, hash="layout-memory-contract-test", mix_mode="mix", bitcodes=None,
+                    auto_blockify_enabled=False)
     metadata.update(derived or {})
     monkeypatch.setattr(compiler, "_parse_linalg_metadata", lambda source, meta: (source, meta))
     monkeypatch.setattr(compiler, "_finalize_program_launch_policy", lambda *_args: None)

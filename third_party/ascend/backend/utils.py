@@ -860,6 +860,7 @@ def _find_cann_version_file():
     return None
 
 
+@functools.lru_cache(None)
 def get_cann_version():
     _cann_version = None
     try:
